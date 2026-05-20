@@ -5,6 +5,7 @@ import {
   storefrontShopCardImageUrl,
 } from "@/lib/catalog/storefront-image-slots";
 import { parseProductMetadata, type ProductColorOption } from "@/lib/admin/product-metadata";
+import { normalizeProductImageList, normalizeProductImageUrl } from "@/lib/media/product-image-url-core";
 import { rowToAdminProduct, type SalvyaProductRow } from "@/lib/admin/types";
 import type { StorefrontVariant } from "@/lib/inventory/types";
 import { findVariantForSelection } from "@/lib/catalog/fetch-product-variants";
@@ -94,10 +95,27 @@ export function pdpPath(product: StorefrontProduct): string {
     : `${base}/item/${encodeURIComponent(product.slug)}`;
 }
 
+function normalizeColorImageOptions(colors: ProductColorOption[]): ProductColorOption[] {
+  return colors.map((c) => {
+    const front = c.front ? normalizeProductImageUrl(c.front) ?? c.front : undefined;
+    const back = c.back ? normalizeProductImageUrl(c.back) ?? c.back : undefined;
+    const models = c.models
+      ?.map((m) => (m ? normalizeProductImageUrl(m) ?? m : null))
+      .filter((m): m is string => Boolean(m));
+    return {
+      ...c,
+      ...(front ? { front } : {}),
+      ...(back ? { back } : {}),
+      ...(models?.length ? { models } : {}),
+    };
+  });
+}
+
 export function rowToStorefrontProduct(row: SalvyaProductRow): StorefrontProduct {
   const admin = rowToAdminProduct(row);
   const meta = parseProductMetadata(row.metadata ?? {});
   const productKind = productKindFromCategory(admin.category as StorefrontProduct["category"]);
+  const colors = normalizeColorImageOptions(meta.colors ?? []);
 
   return {
     id: admin.id,
@@ -114,14 +132,14 @@ export function rowToStorefrontProduct(row: SalvyaProductRow): StorefrontProduct
     compareAtCents: meta.compareAtCents ?? null,
     category: admin.category as StorefrontProduct["category"],
     productKind,
-    images: admin.images ?? [],
+    images: normalizeProductImageList(admin.images),
     stock: admin.stock,
     soldOut: admin.soldOut,
     lowStock: admin.lowStock,
     isLimitedDrop: admin.isLimitedDrop,
     badge: meta.badge ?? null,
     sizes: meta.sizes ?? [],
-    colors: meta.colors ?? [],
+    colors,
     sizeFit: meta.sizeFit ?? null,
     material: meta.material ?? null,
     featured: meta.featured ?? false,

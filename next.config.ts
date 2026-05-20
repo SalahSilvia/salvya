@@ -4,9 +4,30 @@ import { loadLocalEnvFilesSync } from "./lib/env/load-local-env.impl";
 
 loadLocalEnvFilesSync();
 
+function supabaseImageRemotePatterns(): { protocol: "https"; hostname: string; pathname: string }[] {
+  let raw = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  if (!raw) return [];
+  let u = raw.replace(/\/+$/, "");
+  const lower = u.toLowerCase();
+  if (lower.endsWith("/rest/v1")) u = u.slice(0, -"/rest/v1".length);
+  else if (lower.endsWith("/rest")) u = u.slice(0, -"/rest".length);
+  u = u.replace(/\/+$/, "");
+  try {
+    const host = new URL(u).hostname;
+    return [{ protocol: "https", hostname: host, pathname: "/storage/v1/object/public/**" }];
+  } catch {
+    return [];
+  }
+}
+
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
+const supabaseImagePatterns = supabaseImageRemotePatterns();
+
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: supabaseImagePatterns.length ? supabaseImagePatterns : undefined,
+  },
   // Avoid broken webpack vendor-chunks for Supabase when .next is rebuilt mid-dev.
   serverExternalPackages: ["@supabase/supabase-js", "@supabase/ssr"],
   experimental: {

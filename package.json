@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "predev": "node scripts/create-local-env.mjs && node scripts/copy-profiles.mjs",
-    "prebuild": "node scripts/create-local-env.mjs && node scripts/copy-profiles.mjs",
+    "prebuild": "node scripts/create-local-env.mjs && node scripts/copy-profiles.mjs && node scripts/copy-catalog-images-to-public.mjs",
     "setup:env": "node scripts/create-local-env.mjs",
     "clean": "node scripts/clean-build-cache.mjs",
     "dev:stop": "node scripts/stop-dev-servers.mjs",

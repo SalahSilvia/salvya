@@ -5,6 +5,7 @@ import {
   resolveArtistCatalogRoot,
 } from "@/lib/artist-folder-catalog";
 import type { ArtistFolderCatalogSlug } from "@/lib/artist-folder-catalog-slugs";
+import { resolvePublicCatalogModelFilePath } from "@/lib/media/catalog-public-disk";
 
 export type ModelShotKind = "hoodie" | "tee";
 
@@ -98,6 +99,8 @@ export function resolveArtistCatalogModelHoodieFilePath(
   if (!isSafeArtistFolderOrFileName(productFolder) || !isSafeRelativeImagePath(relativeFile)) {
     return null;
   }
+  const bundled = resolvePublicCatalogModelFilePath(slug, productFolder, "model-hoodie", relativeFile);
+  if (bundled) return bundled;
   const root = resolveArtistCatalogRoot(slug);
   if (!root) return null;
   const modelDir = resolveProductModelShotDir(root, productFolder, "hoodie");
@@ -114,6 +117,8 @@ export function resolveArtistCatalogModelTshirtFilePath(
   if (!isSafeArtistFolderOrFileName(productFolder) || !isSafeRelativeImagePath(relativeFile)) {
     return null;
   }
+  const bundled = resolvePublicCatalogModelFilePath(slug, productFolder, "model-tee", relativeFile);
+  if (bundled) return bundled;
   const root = resolveArtistCatalogRoot(slug);
   if (!root) return null;
   const modelDir = resolveProductModelShotDir(root, productFolder, "tee");

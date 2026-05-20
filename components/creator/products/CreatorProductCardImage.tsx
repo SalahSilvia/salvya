@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useMemo, useState } from "react";
 import type { StorefrontProductWithVariants } from "@/lib/catalog/attach-variants-to-products";
 import { collectProductImageCandidates } from "@/lib/catalog/product-image-candidates";
+import { shouldUnoptimizeProductImage } from "@/lib/media/product-image-url-client";
 
 type Props = {
   product: StorefrontProductWithVariants;
@@ -29,6 +30,7 @@ export function CreatorProductCardImage({ product, title }: Props) {
       src={src}
       alt={title}
       fill
+      unoptimized={shouldUnoptimizeProductImage(src)}
       className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
       sizes="(max-width:640px) 50vw, 320px"
       onError={() => {

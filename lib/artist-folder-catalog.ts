@@ -8,6 +8,10 @@ import { orderHoodieImages } from "@/lib/shop-data";
 import { artistFolderRootCandidates } from "@/lib/salvya-paths";
 
 import type { ArtistFolderCatalogSlug } from "@/lib/artist-folder-catalog-slugs";
+import {
+  resolvePublicCatalogHoodieFilePath,
+  resolvePublicCatalogTshirtFilePath,
+} from "@/lib/media/catalog-public-disk";
 export { ARTIST_FOLDER_CATALOG_SLUGS, isArtistFolderCatalogSlug, type ArtistFolderCatalogSlug } from "@/lib/artist-folder-catalog-slugs";
 
 /** Max folder-backed hoodie / tee rows per artist in carousels (UI). Catalog sync scans higher. */
@@ -181,6 +185,8 @@ export function resolveArtistCatalogHoodieFilePath(
   file: string,
 ): string | null {
   if (!isSafeArtistFolderOrFileName(folder) || !isSafeArtistFolderOrFileName(file)) return null;
+  const bundled = resolvePublicCatalogHoodieFilePath(slug, folder, file);
+  if (bundled) return bundled;
   const root = resolveArtistCatalogRoot(slug);
   if (!root) return null;
   const p = join(root, folder, "hoodie", file);
@@ -193,6 +199,8 @@ export function resolveArtistCatalogTshirtFilePath(
   file: string,
 ): string | null {
   if (!isSafeArtistFolderOrFileName(folder) || !isSafeArtistFolderOrFileName(file)) return null;
+  const bundled = resolvePublicCatalogTshirtFilePath(slug, folder, file);
+  if (bundled) return bundled;
   const root = resolveArtistCatalogRoot(slug);
   if (!root) return null;
   const tshirtDir = resolveArtistTshirtDir(root, folder);
