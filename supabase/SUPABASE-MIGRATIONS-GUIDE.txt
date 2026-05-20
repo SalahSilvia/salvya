@@ -1,0 +1,150 @@
+================================================================================
+SALVYA — SUPABASE SQL MIGRATIONS GUIDE
+================================================================================
+Project folder: web/supabase/migrations/
+
+PRODUCTION LAUNCH (one file):
+  1. npm run db:bundle          (refreshes APPLY-ALL-MIGRATIONS.sql — 40 files)
+  2. Supabase SQL Editor → paste supabase/APPLY-ALL-MIGRATIONS.sql → Run
+  3. Run supabase/PROMOTE-ADMIN.sql
+  4. npm run db:verify
+
+See also: supabase/RUN-TODAY.md and scripts/supabase/APPLY-INSTRUCTIONS.md
+
+Your SQL Editor is empty until YOU run these files. The app code expects these
+tables; nothing auto-runs from GitHub or Cursor.
+
+--------------------------------------------------------------------------------
+WHERE THE SQL FILES LIVE (do not delete)
+--------------------------------------------------------------------------------
+All migration files stay in:
+
+  web/supabase/migrations/
+
+File name format (always use this for NEW migrations):
+
+  YYYYMMDDHHMMSS_short_description.sql
+
+  Example (future):  20260515143000_add_saved_addresses.sql
+
+  • YYYYMMDD = date (year month day)
+  • HHMMSS   = time (hour minute second) — avoids name clashes
+  • short_description = what the migration does
+
+--------------------------------------------------------------------------------
+RUN ORDER — paste ONE file at a time in Supabase SQL Editor
+--------------------------------------------------------------------------------
+Run in this exact order (oldest → newest). Wait for "Success" before the next.
+
+  ⚠ Paste ONLY the contents of each .sql file — never paste UI labels (e.g.
+    "Search") or markdown. If you see "syntax error at or near …" on line 1,
+    you pasted the wrong text.
+  • Run each file as one full batch (creates tables before backfill).
+
+  #  | Date in filename   | File name                                      | Feature
+  ---+--------------------+------------------------------------------------+------------------
+  1  | 2025-05-15 12:00   | 20250515120000_customer_carts.sql              | Bag / cart sync
+  2  | 2025-05-15 13:00   | 20250515130000_customer_likes.sql              | Likes / hearts sync
+  3  | 2025-05-15 14:00   | 20250515140000_customer_artist_follows.sql     | Follow artists sync
+  4  | 2025-05-15 15:00   | 20250515150000_product_reviews.sql             | Shared product comments
+  5  | 2025-05-15 16:00   | 20250515160000_customer_notifications.sql      | Notifications inbox + prefs
+  6  | 2025-05-15 17:00   | 20250515170000_customer_orders.sql             | Real orders + track lookup
+  7  | 2025-05-15 18:00   | 20250515180000_user_profiles_rbac.sql         | Roles (RBAC), RLS, backfill — run AFTER row exists
+
+Tables created after core migrations above (rows 1–6):
+
+  • customer_carts
+  • customer_likes
+  • customer_artist_follows
+  • product_reviews
+  • customer_notifications
+  • customer_orders
+
+After migration #7 (RBAC) you also get:
+
+  • user_profiles
+  • admin_audit_log
+
+--------------------------------------------------------------------------------
+HOW TO RUN IN SUPABASE (step by step)
+--------------------------------------------------------------------------------
+1. Open https://supabase.com/dashboard → your Salvya project
+2. Left menu → SQL → New query
+3. On your PC open the FIRST file from the list above (full path below)
+4. Copy ALL contents → paste into SQL Editor → Run
+5. You should see: "Success. No rows returned" (that is normal for CREATE TABLE)
+6. Repeat for files 2–7 — one file per new query (or clear and paste next)
+
+Full paths on your machine (Windows):
+
+  c:\Users\HP\Desktop\Salvya\web\supabase\migrations\20250515120000_customer_carts.sql
+  c:\Users\HP\Desktop\Salvya\web\supabase\migrations\20250515130000_customer_likes.sql
+  c:\Users\HP\Desktop\Salvya\web\supabase\migrations\20250515140000_customer_artist_follows.sql
+  c:\Users\HP\Desktop\Salvya\web\supabase\migrations\20250515150000_product_reviews.sql
+  c:\Users\HP\Desktop\Salvya\web\supabase\migrations\20250515160000_customer_notifications.sql
+  c:\Users\HP\Desktop\Salvya\web\supabase\migrations\20250515170000_customer_orders.sql
+  c:\Users\HP\Desktop\Salvya\web\supabase\migrations\20250515180000_user_profiles_rbac.sql
+
+--------------------------------------------------------------------------------
+VERIFY TABLES EXIST (run once after all 6 migrations)
+--------------------------------------------------------------------------------
+Paste in SQL Editor and Run:
+
+  select table_name
+  from information_schema.tables
+  where table_schema = 'public'
+    and table_name in (
+      'customer_carts',
+      'customer_likes',
+      'customer_artist_follows',
+      'product_reviews',
+      'customer_notifications',
+      'customer_orders'
+    )
+  order by table_name;
+
+You should get 6 rows.
+
+--------------------------------------------------------------------------------
+ENV VARS (required for orders + guest track — not only sign-in)
+--------------------------------------------------------------------------------
+In salvya.local.env or .env.local next to web/package.json:
+
+  NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+  SUPABASE_SERVICE_ROLE_KEY=your_service_role_key   ← needed for checkout orders + track
+
+Restart: npm run dev
+
+Never commit service_role key to public GitHub.
+
+--------------------------------------------------------------------------------
+OPTION B — Supabase CLI (if you install it later)
+--------------------------------------------------------------------------------
+From folder:  c:\Users\HP\Desktop\Salvya\web
+
+  supabase link --project-ref YOUR_PROJECT_REF
+  supabase db push
+
+CLI applies every file in migrations/ in filename order automatically.
+
+--------------------------------------------------------------------------------
+FUTURE: ADDING A NEW MIGRATION (do not edit old files)
+--------------------------------------------------------------------------------
+1. Create NEW file only — never change a migration you already ran in production
+2. Name: YYYYMMDDHHMMSS_what_it_does.sql
+3. Put it in: web/supabase/migrations/
+4. Add a line to MIGRATIONS-LOG.txt (see below)
+5. Run ONLY that new file in Supabase SQL Editor
+
+--------------------------------------------------------------------------------
+TROUBLESHOOTING
+--------------------------------------------------------------------------------
+• "relation already exists" — you already ran that migration; skip or use IF NOT EXISTS (files already do)
+• Bag/likes still "not synced" — check table exists + you are signed in + dev server restarted
+• Orders/track fail — run migration #6 + set SUPABASE_SERVICE_ROLE_KEY
+• SQL Editor history empty — normal; history is not the same as having tables. Use Table Editor or the verify query above.
+
+================================================================================
+End of guide — keep this file in the repo for your future self.
+================================================================================

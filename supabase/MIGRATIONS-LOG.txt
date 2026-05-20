@@ -1,0 +1,61 @@
+================================================================================
+SALVYA — MIGRATIONS LOG (append only — newest at bottom)
+================================================================================
+When you run SQL in Supabase, add one line here so you never get confused.
+
+Format:
+  [APPLIED or PENDING] YYYYMMDDHHMMSS_filename.sql | date you ran it | notes
+
+--------------------------------------------------------------------------------
+BACKLOG (40 files — apply in one batch: APPLY-ALL-MIGRATIONS.sql)
+--------------------------------------------------------------------------------
+[PENDING] 20250515120000_customer_carts.sql                    | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250515130000_customer_likes.sql                    | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250515140000_customer_artist_follows.sql           | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250515150000_product_reviews.sql                   | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250515160000_customer_notifications.sql            | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250515170000_customer_orders.sql                   | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250515180000_user_profiles_rbac.sql                | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250515190000_customer_addresses.sql                | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250515201000_salvya_products_and_admin_order_access.sql | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250516120000_analytics_events_sessions.sql         | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250516180000_order_status_history_products_publish.sql | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250516190000_store_settings.sql                    | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250516200000_product_images_storage_metadata.sql   | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250516210000_salvya_artists.sql                    | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250516220000_artist_images_storage.sql             | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250516230000_salvya_blog.sql                       | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250516230100_blog_images_storage.sql               | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250516240000_email_send_log.sql                    | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250516250000_salvya_influencer_applications.sql    | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250516260000_god_admin_role.sql                    | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250516270000_user_profile_details.sql              | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250516280000_products_artist_slug_unique.sql       | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250516290000_paypal_payment_verification.sql       | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250518300000_order_refunds_guest_linking.sql       | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250518400000_multi_market_pricing.sql              | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250518500000_user_geo_preferences.sql              | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250518600000_payment_lifecycle_refunds.sql         | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250518700000_production_hardening.sql              | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250518800000_product_variants_inventory_lifecycle.sql | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250518900000_discovery_engine.sql                  | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250519900000_creator_applications_profiles.sql     | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250520100000_creator_product_links.sql             | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250520110000_creator_product_links_orders_count.sql | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250520120000_creator_monetization_engine.sql       | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250520130000_creator_phase3_trust.sql              | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250520140000_creator_phase4_growth_layer.sql       | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250520150000_creator_payout_system.sql             | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250520160000_creator_phase6_growth_ai.sql          | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250520160100_fix_phase6_boost_index.sql            | | Run via APPLY-ALL-MIGRATIONS.sql
+[PENDING] 20250520170000_creator_phase7_notifications.sql      | | Run via APPLY-ALL-MIGRATIONS.sql
+
+--------------------------------------------------------------------------------
+APPLIED (move ALL backlog lines here after a successful SQL Editor run)
+--------------------------------------------------------------------------------
+Example:
+  [APPLIED] 20250515120000_customer_carts.sql | 2026-05-20 12:00 | APPLY-ALL batch success
+
+(Add your lines below this line)
+
+--------------------------------------------------------------------------------

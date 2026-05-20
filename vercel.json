@@ -1,0 +1,29 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/internal/payment-lifecycle",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/creator-reconcile",
+      "schedule": "15 */12 * * *"
+    },
+    {
+      "path": "/api/cron/creator-payout-eligibility",
+      "schedule": "30 6 * * *"
+    },
+    {
+      "path": "/api/cron/creator-growth-recompute",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/creator-virality-update",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/creator-insights",
+      "schedule": "45 5 * * *"
+    }
+  ]
+}
