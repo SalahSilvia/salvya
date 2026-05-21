@@ -13,9 +13,9 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#050508",
     icons: [
       {
-        src: "/api/brand/salvya-logo-black",
+        src: "/brand/salvya-mark.svg",
         sizes: "512x512",
-        type: "image/png",
+        type: "image/svg+xml",
         purpose: "any",
       },
     ],

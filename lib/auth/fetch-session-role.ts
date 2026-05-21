@@ -6,7 +6,7 @@ export async function fetchSessionRole(maxAttempts = 4): Promise<SalvyaRole> {
     try {
       const res = await fetch("/api/auth/me", { credentials: "include", cache: "no-store" });
       if (res.ok) {
-        const body = (await res.json()) as { ok?: boolean; user?: { role?: SalvyaRole } };
+        const body = (await res.json()) as { ok?: boolean; user?: { role?: SalvyaRole } | null };
         if (body.ok && body.user?.role) return body.user.role;
       }
     } catch {

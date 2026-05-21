@@ -36,7 +36,7 @@ export function GoogleAuthButton({ label, disabled, loading, onClick }: Props) {
         <GoogleSpinner />
       ) : (
         <Image
-          src="/api/brand/google-g-logo"
+          src="/brand/google-g.svg"
           alt=""
           width={20}
           height={20}

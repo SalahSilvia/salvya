@@ -128,4 +128,4 @@ export const brandLogoLight = "/media/SalvyaLogo-white.png";
  * Dark mark on light backgrounds — resolves via API so dev works when the file
  * lives at repo root `SALVYA-LOGO-BLACK-VERSION.png` or under `web/public/media/`.
  */
-export const brandLogoBlack = "/api/brand/salvya-logo-black";
+export const brandLogoBlack = "/brand/salvya-mark.svg";

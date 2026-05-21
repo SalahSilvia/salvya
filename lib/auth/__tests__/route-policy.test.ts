@@ -43,4 +43,9 @@ describe("resolveRouteAccess", () => {
     expect(resolveRouteAccess("/api/analytics/collect").kind).toBe("public");
     expect(resolveRouteAccess("/api/analytics/heartbeat").kind).toBe("public");
   });
+
+  it("treats /api/auth/me as a public session probe", () => {
+    expect(resolveRouteAccess("/api/auth/me").kind).toBe("public");
+    expect(routeRequiresAuthentication(resolveRouteAccess("/api/auth/me"))).toBe(false);
+  });
 });

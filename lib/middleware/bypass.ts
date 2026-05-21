@@ -16,7 +16,7 @@ const PREFIX_BYPASS = [
 ] as const;
 
 /** Public media (catalog copies, brand assets) — never locale-prefix or auth-gate. */
-const PUBLIC_ASSET_PREFIXES = ["/media/", "/images/"] as const;
+const PUBLIC_ASSET_PREFIXES = ["/media/", "/images/", "/brand/"] as const;
 
 const STATIC_FILE_EXTENSIONS =
   /\.(?:avif|bmp|gif|ico|jpe?g|png|svg|webp|woff2?|woff|ttf|otf|eot|txt|xml|webmanifest|map)$/i;

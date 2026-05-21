@@ -35,7 +35,6 @@ const API_RULES: { prefix: string; roles: readonly SalvyaRole[] }[] = [
   { prefix: "/api/creator", roles: ["customer", "influencer", "admin", "god_admin"] },
   { prefix: "/api/me", roles: ["customer", "influencer", "admin", "god_admin"] },
   { prefix: "/api/account", roles: ["customer", "influencer", "admin", "god_admin"] },
-  { prefix: "/api/auth/me", roles: ["customer", "influencer", "admin", "god_admin"] },
 ];
 
 function matchPrefix(pathname: string, prefix: string): boolean {

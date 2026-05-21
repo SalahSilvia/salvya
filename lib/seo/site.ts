@@ -9,7 +9,7 @@ export const DEFAULT_DESCRIPTION =
   "Shop official artist merch on Salvya — limited drops, oversized hoodies and graphic tees, on-model fit guides, and secure fan-first checkout with European shipping.";
 
 /** Default OG/Twitter image (absolute URL resolved at runtime). */
-export const DEFAULT_OG_IMAGE_PATH = "/api/brand/salvya-logo-black";
+export const DEFAULT_OG_IMAGE_PATH = "/brand/salvya-mark.svg";
 
 export const SUPPORTED_LOCALES = ["en", "fr", "es", "it", "nl", "ar"] as const;
 export type SalvyaLocale = (typeof SUPPORTED_LOCALES)[number];

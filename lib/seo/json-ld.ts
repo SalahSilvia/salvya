@@ -31,7 +31,7 @@ export function organizationJsonLd(): JsonLd {
     "@id": `${getSiteUrl()}/#organization`,
     name: SITE_NAME,
     url: getSiteUrl(),
-    logo: localizedAbsoluteUrl("/api/brand/salvya-logo-black", DEFAULT_LOCALE),
+    logo: localizedAbsoluteUrl("/brand/salvya-mark.svg", DEFAULT_LOCALE),
     description:
       "Salvya is a premium creator-commerce platform for official artist merch, limited drops, and fan-first checkout.",
     sameAs: [],
@@ -104,7 +104,7 @@ export function productJsonLd(
   const url = pageUrl(path, l);
   const image = product.images[0]
     ? localizedAbsoluteUrl(product.images[0], l)
-    : localizedAbsoluteUrl("/api/brand/salvya-logo-black", l);
+    : localizedAbsoluteUrl("/brand/salvya-mark.svg", l);
   const availability = product.soldOut
     ? "https://schema.org/OutOfStock"
     : "https://schema.org/InStock";
@@ -160,7 +160,7 @@ export function articleJsonLd(post: BlogPost, locale?: string | SalvyaLocale): J
       name: SITE_NAME,
       logo: {
         "@type": "ImageObject",
-        url: localizedAbsoluteUrl("/api/brand/salvya-logo-black", l),
+        url: localizedAbsoluteUrl("/brand/salvya-mark.svg", l),
       },
     },
     mainEntityOfPage: url,
