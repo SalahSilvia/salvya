@@ -44,7 +44,9 @@
     "switch": "Wisselen",
     "stay": "Hier blijven",
     "currencyTitle": "Weergavevaluta",
-    "chargeNote": "Afrekenen gebeurt in EUR. Getoonde prijzen volgen je regio."
+    "chargeNote": "Afrekenen gebeurt in EUR. Getoonde prijzen volgen je regio.",
+    "mismatchToast": "Netwerk toont {detected}. Prijzen blijven op {selected}.",
+    "mismatchDismiss": "Begrepen"
   },
   "menu": {
     "discover": "Ontdekken",
@@ -90,7 +92,16 @@
     "noAccount": "Nieuw hier?",
     "hasAccount": "Heb je al een account?",
     "continueWithGoogle": "Doorgaan met Google",
-    "orEmail": "of doorgaan met e-mail"
+    "orEmail": "of doorgaan met e-mail",
+    "signInCardSubtitle": "Log in met Google of e-mail. Je tas en likes synchroniseren.",
+    "createAccountCardSubtitle": "Snelst met Google of maak een wachtwoord. Eén profiel voor checkout.",
+    "rememberMe": "Ingelogd blijven",
+    "rememberMeHint": "Blijf ingelogd op dit apparaat tot je uitlogt.",
+    "signingIn": "Inloggen…",
+    "creatingAccount": "Account aanmaken…",
+    "signedInSuccess": "Welkom terug — doorverwijzen…",
+    "supabaseNotConfigured": "Inloggen tijdelijk niet beschikbaar.",
+    "clientStartFailed": "Kon inloggen niet starten. Vernieuw de pagina."
   },
   "checkout": {
     "checkout": "Afrekenen",

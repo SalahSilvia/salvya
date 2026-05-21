@@ -44,7 +44,9 @@
     "switch": "تبديل",
     "stay": "البقاء هنا",
     "currencyTitle": "عملة العرض",
-    "chargeNote": "الدفع باليورو. الأسعار المعروضة تتبع منطقتك."
+    "chargeNote": "الدفع باليورو. الأسعار المعروضة تتبع منطقتك.",
+    "mismatchToast": "الشبكة تشير إلى {detected}. الأسعار تبقى على {selected}.",
+    "mismatchDismiss": "حسناً"
   },
   "menu": {
     "discover": "استكشف",
@@ -90,7 +92,16 @@
     "noAccount": "جديد هنا؟",
     "hasAccount": "لديك حساب بالفعل؟",
     "continueWithGoogle": "المتابعة مع Google",
-    "orEmail": "أو المتابعة بالبريد"
+    "orEmail": "أو المتابعة بالبريد",
+    "signInCardSubtitle": "سجّل الدخول عبر Google أو البريد. تتزامن حقيبتك وإعجاباتك.",
+    "createAccountCardSubtitle": "الأسرع عبر Google أو أنشئ كلمة مرور. ملف واحد للدفع.",
+    "rememberMe": "إبقائي مسجّل الدخول",
+    "rememberMeHint": "ابقَ مسجّل الدخول على هذا الجهاز حتى تسجيل الخروج.",
+    "signingIn": "جارٍ تسجيل الدخول…",
+    "creatingAccount": "جارٍ إنشاء الحساب…",
+    "signedInSuccess": "مرحبًا بعودتك — إعادة التوجيه…",
+    "supabaseNotConfigured": "تسجيل الدخول غير متاح مؤقتًا.",
+    "clientStartFailed": "تعذّر بدء تسجيل الدخول. حدّث الصفحة."
   },
   "checkout": {
     "checkout": "إتمام الشراء",

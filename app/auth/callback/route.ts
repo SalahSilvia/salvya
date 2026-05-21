@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { getAuthRedirectOrigin } from "@/lib/auth/auth-origin";
 import { resolvePostLoginRedirect } from "@/lib/auth/post-login-redirect";
 import { safeNextPath } from "@/lib/auth/login-href";
 import { getUserRoleById } from "@/lib/auth/get-user-role";
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/login?auth=missing_code", request.url));
   }
 
-  const origin = requestUrl.origin;
+  const origin = getAuthRedirectOrigin();
 
   /** Cookie jar for PKCE exchange — Location header updated after role resolution. */
   // eslint-disable-next-line prefer-const -- Supabase SSR mutates cookies on this response before return

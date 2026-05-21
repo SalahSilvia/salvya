@@ -1,21 +1,17 @@
 import { cookies, headers } from "next/headers";
 import type { AppLocale } from "@/i18n/routing";
-import {
-  COOKIE_DETECTED_COUNTRY,
-  COOKIE_DISPLAY_CURRENCY,
-  COOKIE_GEO_MANUAL,
-  COOKIE_GEO_RESOLVED,
-  COOKIE_GEO_WEAK,
-  COOKIE_PREF_COUNTRY,
-} from "@/lib/geo/constants";
+import { COOKIE_DISPLAY_CURRENCY } from "@/lib/geo/constants";
 import { acceptLanguageFromHeaders } from "@/lib/geo/detect-country";
-import { geoProfileForCountry, normalizeCountryCode } from "@/lib/geo/country-map";
+import { geoProfileForCountry } from "@/lib/geo/country-map";
 import {
   formatRegionalSnapshotForLog,
   geoLogServer,
   isGeoDebugEnabled,
   priceTierLabel,
 } from "@/lib/geo/debug";
+import { readGeoCookieState } from "@/lib/geo/cookie-state";
+import { repairGeoCookieState } from "@/lib/geo/geo-consistency";
+import { isMoroccoManualLock } from "@/lib/geo/morocco-stability";
 import { shouldPersistPrefCountry } from "@/lib/geo/persist-policy";
 import { resolveShopperCountryDetailed } from "@/lib/geo/resolve-country";
 import { snapshotFromCookies, type RegionalPreferencesSnapshot } from "@/lib/geo/preferences";
@@ -29,25 +25,18 @@ export async function getRegionalPreferences(): Promise<RegionalPreferencesServe
   const cookieGet = (name: string) => store.get(name)?.value;
 
   const snapshot = snapshotFromCookies(cookieGet, acceptLanguage);
+  const cookieState = repairGeoCookieState(readGeoCookieState(cookieGet)).state;
   const geoWeak = snapshot.weakDetection === true;
   const geoManual = snapshot.geoManual;
-  const geoResolved = snapshot.geoResolved;
-  const prevPref = normalizeCountryCode(cookieGet(COOKIE_PREF_COUNTRY));
-  const prevDetected = normalizeCountryCode(cookieGet(COOKIE_DETECTED_COUNTRY));
-
-  const persistedStrong = geoManual
-    ? prevPref
-    : geoWeak
-      ? null
-      : geoResolved
-        ? prevPref ?? prevDetected
-        : null;
+  const prevPref = cookieState.pref;
+  const prevDetected = cookieState.detected;
 
   const resolution = await resolveShopperCountryDetailed(hdrs, {
-    persistedStrongCountry: persistedStrong,
+    savedPrefCountry: prevPref,
     manualCountry: geoManual ? prevPref : null,
     displayCurrency: cookieGet(COOKIE_DISPLAY_CURRENCY) ?? null,
     geoManual,
+    geoWeak,
   });
 
   const detected = resolution.country ?? prevDetected;
@@ -57,10 +46,13 @@ export async function getRegionalPreferences(): Promise<RegionalPreferencesServe
   }
 
   if (geoManual) {
+    const moroccoLocked = isMoroccoManualLock(cookieState);
     return {
       ...snapshot,
       detectedCountry: detected,
-      prefCountry: prevPref ?? detected,
+      prefCountry: moroccoLocked ? "MA" : (prevPref ?? detected),
+      displayCurrency: moroccoLocked ? "MAD" : snapshot.displayCurrency,
+      geoManual: true,
       weakDetection: false,
     };
   }

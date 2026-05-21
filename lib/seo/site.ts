@@ -33,7 +33,7 @@ export function getSiteUrl(): string {
     return `http://localhost:${port}`;
   }
   const raw = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.VERCEL_URL;
-  if (!raw) return "https://salvya.com";
+  if (!raw) return "https://www.salvyastore.com";
   return normalizeSiteUrl(raw);
 }
 

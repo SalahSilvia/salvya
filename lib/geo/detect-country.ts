@@ -7,6 +7,8 @@ import { resolveShopperCountry } from "@/lib/geo/resolve-country";
  * Safe for middleware — never blocks; returns null when unknown.
  */
 export function detectCountryFromHeaders(headers: Headers): string | null {
+  const fromMiddleware = normalizeCountryCode(headers.get("x-salvya-edge-country"));
+  if (fromMiddleware) return fromMiddleware;
   const candidates = [
     headers.get("x-vercel-ip-country"),
     headers.get("cf-ipcountry"),

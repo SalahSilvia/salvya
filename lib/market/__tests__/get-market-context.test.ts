@@ -51,7 +51,7 @@ describe("getMarketContext", () => {
     expect(ctx.source).toBe("profile");
   });
 
-  it("prefers detected over pref when geo_resolved (strong cookies)", async () => {
+  it("prefers saved pref cookie over detected when both set", async () => {
     cookiesMock.mockResolvedValue({
       get: (name: string) => {
         if (name === "salvya_pref_country") return { value: "FR" };
@@ -61,8 +61,8 @@ describe("getMarketContext", () => {
       },
     });
     const ctx = await getMarketContext();
-    expect(ctx.marketCode).toBe("MA");
-    expect(ctx.currency).toBe("MAD");
+    expect(ctx.marketCode).toBe("EU");
+    expect(ctx.countryCode).toBe("FR");
   });
 
   it("ignores stale detected cookie without geo_resolved", async () => {

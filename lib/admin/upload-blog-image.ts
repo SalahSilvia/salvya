@@ -1,3 +1,5 @@
+import { postOptimizedImageUpload } from "@/lib/media/client/upload-with-retry";
+
 export type BlogImageKind = "cover" | "inline";
 
 export async function uploadBlogImage(
@@ -13,12 +15,7 @@ export async function uploadBlogImage(
   fd.append("postSlug", slug);
   fd.append("kind", kind);
 
-  const res = await fetch("/api/admin/upload/blog-image", {
-    method: "POST",
-    credentials: "include",
-    body: fd,
-  });
-  const body = (await res.json()) as { ok?: boolean; url?: string; error?: string };
-  if (!res.ok || !body.ok || !body.url) throw new Error(body.error ?? "Upload failed");
+  const body = await postOptimizedImageUpload("/api/admin/upload/blog-image", fd);
+  if (!body.url) throw new Error("Upload failed");
   return body.url;
 }

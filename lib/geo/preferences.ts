@@ -12,6 +12,10 @@ import {
 } from "@/lib/geo/constants";
 import type { GeoConfidence } from "@/lib/geo/types";
 import { currencyForCountry, geoProfileForCountry, normalizeCountryCode } from "@/lib/geo/country-map";
+import { readGeoCookieState } from "@/lib/geo/cookie-state";
+import { selectedCountryFromCookieState } from "@/lib/geo/effective-region";
+import { buildGeoMismatchNotice } from "@/lib/geo/geo-consistency";
+import { enforceMoroccoManualSelection, MOROCCO_COUNTRY } from "@/lib/geo/morocco-stability";
 
 export const REGIONAL_PREFERENCES_EVENT = "salvya:regional-preferences-updated";
 
@@ -30,18 +34,29 @@ export type RegionalPreferencesSnapshot = {
   bootstrapCurrency?: CurrencyCode;
 };
 
+/** Active pricing country from snapshot (matches SSR cookie priority). */
+export function pricingCountryFromSnapshot(snapshot: RegionalPreferencesSnapshot): string | null {
+  return selectedCountryFromCookieState({
+    pref: normalizeCountryCode(snapshot.prefCountry),
+    detected: normalizeCountryCode(snapshot.detectedCountry),
+    displayCurrency: snapshot.displayCurrency,
+    geoManual: snapshot.geoManual,
+    geoWeak: snapshot.weakDetection === true,
+    geoResolved: snapshot.geoResolved,
+  });
+}
+
 export function snapshotFromCookies(
   cookieGet: (name: string) => string | undefined,
   acceptLanguage?: string | null,
 ): RegionalPreferencesSnapshot {
-  const detected = normalizeCountryCode(cookieGet(COOKIE_DETECTED_COUNTRY));
-  const prefCountry = normalizeCountryCode(cookieGet(COOKIE_PREF_COUNTRY)) ?? detected;
-  const geoResolved = cookieGet(COOKIE_GEO_RESOLVED) === "1";
-  const geoManual = cookieGet(COOKIE_GEO_MANUAL) === "1";
-  const weakDetection = cookieGet(COOKIE_GEO_WEAK) === "1";
-  const explicitCurrency = parseDisplayCurrency(cookieGet(COOKIE_DISPLAY_CURRENCY));
+  const cookieState = readGeoCookieState(cookieGet);
+  const { detected, pref: prefOnly, geoResolved, geoManual, geoWeak: weakDetection } = cookieState;
+  const selected = selectedCountryFromCookieState(cookieState);
+  const prefCountry = prefOnly ?? selected;
+  const explicitCurrency = cookieState.displayCurrency;
   const displayCurrency =
-    explicitCurrency ?? currencyForCountry(prefCountry ?? detected) ?? "EUR";
+    explicitCurrency ?? currencyForCountry(selected ?? detected) ?? "EUR";
 
   return {
     detectedCountry: detected,
@@ -84,6 +99,10 @@ export function buildGeoSuggestion(
   const detected = normalizeCountryCode(country);
   if (!pref || !detected || pref === detected) return null;
 
+  if (snapshot.geoManual && pref === MOROCCO_COUNTRY) {
+    return null;
+  }
+
   const profile = geoProfileForCountry(country, acceptLanguage);
   const suggestedLocale =
     profile.countryCode === "MA"
@@ -115,6 +134,23 @@ function setClientCookieWithMaxAge(name: string, value: string, maxAge: number) 
   document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; SameSite=Lax${secure}`;
 }
 
+export function buildGeoMismatchFromSnapshot(
+  snapshot: RegionalPreferencesSnapshot,
+  names: { selected: string; detected: string },
+) {
+  return buildGeoMismatchNotice(
+    {
+      pref: normalizeCountryCode(snapshot.prefCountry),
+      detected: normalizeCountryCode(snapshot.detectedCountry),
+      displayCurrency: snapshot.displayCurrency,
+      geoManual: snapshot.geoManual,
+      geoWeak: snapshot.weakDetection === true,
+      geoResolved: snapshot.geoResolved,
+    },
+    names,
+  );
+}
+
 export function persistGeoChoice(opts: {
   locale?: AppLocale;
   currency: CurrencyCode;
@@ -122,7 +158,15 @@ export function persistGeoChoice(opts: {
   resolved?: boolean;
   manual?: boolean;
   weakDetection?: boolean;
+  /** When manual Morocco lock: keep network-detected country for informational UI only. */
+  detectedOnly?: string | null;
 }) {
+  const normalized = enforceMoroccoManualSelection({
+    country: opts.country,
+    currency: opts.currency,
+    manual: opts.manual,
+  });
+
   if (opts.weakDetection) {
     setClientCookieWithMaxAge(COOKIE_DETECTED_COUNTRY, opts.country, GEO_WEAK_COOKIE_MAX_AGE);
     setClientCookieWithMaxAge(COOKIE_GEO_WEAK, "1", GEO_WEAK_COOKIE_MAX_AGE);
@@ -133,10 +177,11 @@ export function persistGeoChoice(opts: {
     document.cookie = `${COOKIE_GEO_WEAK}=; Path=/; Max-Age=0; SameSite=Lax`;
   }
 
-  setClientCookie(COOKIE_DISPLAY_CURRENCY, opts.currency);
-  setClientCookie(COOKIE_PREF_COUNTRY, opts.country);
-  setClientCookie(COOKIE_DETECTED_COUNTRY, opts.country);
-  if (opts.manual) {
+  setClientCookie(COOKIE_DISPLAY_CURRENCY, normalized.currency);
+  setClientCookie(COOKIE_PREF_COUNTRY, normalized.country);
+  const detectedValue = opts.detectedOnly ?? normalized.country;
+  setClientCookie(COOKIE_DETECTED_COUNTRY, detectedValue);
+  if (normalized.manual) {
     setClientCookie(COOKIE_GEO_MANUAL, "1");
   }
   if (opts.resolved !== false) {

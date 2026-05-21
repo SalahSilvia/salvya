@@ -3,9 +3,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   collectBlogFolderImports,
   coverImageMime,
-  coverStoragePath,
   type BlogFolderImportRow,
 } from "@/lib/blog/blog-folder-import";
+import { uploadOptimizedImage } from "@/lib/media/image-optimization/upload";
 
 const BUCKET = "blog-images";
 
@@ -31,15 +31,12 @@ async function uploadCover(
   row: BlogFolderImportRow,
 ): Promise<string> {
   const buf = readFileSync(row.coverImagePath);
-  const path = coverStoragePath(row.slug, row.coverImagePath);
-  const { error } = await service.storage.from(BUCKET).upload(path, buf, {
-    contentType: coverImageMime(row.coverImagePath),
+  const mime = coverImageMime(row.coverImagePath);
+  const result = await uploadOptimizedImage(service, BUCKET, `${row.slug}/cover`, buf, mime, {
     upsert: true,
-    cacheControl: "3600",
+    cacheVersion: String(Date.now()),
   });
-  if (error) throw new Error(`cover upload ${row.slug}: ${error.message}`);
-  const { data } = service.storage.from(BUCKET).getPublicUrl(path);
-  return data.publicUrl;
+  return result.url;
 }
 
 export async function syncBlogFoldersToSupabase(

@@ -1,3 +1,5 @@
+import { postOptimizedImageUpload } from "@/lib/media/client/upload-with-retry";
+
 export type ArtistImageKind = "profile" | "cover";
 
 export async function uploadArtistImage(
@@ -13,12 +15,7 @@ export async function uploadArtistImage(
   fd.append("artistSlug", slug);
   fd.append("kind", kind);
 
-  const res = await fetch("/api/admin/upload/artist-image", {
-    method: "POST",
-    credentials: "include",
-    body: fd,
-  });
-  const body = (await res.json()) as { ok?: boolean; url?: string; error?: string };
-  if (!res.ok || !body.ok || !body.url) throw new Error(body.error ?? "Upload failed");
+  const body = await postOptimizedImageUpload("/api/admin/upload/artist-image", fd);
+  if (!body.url) throw new Error("Upload failed");
   return body.url;
 }

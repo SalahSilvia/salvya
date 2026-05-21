@@ -2,6 +2,8 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useCallback, useState } from "react";
+import { SalvyaOptimizedImage } from "@/components/media/SalvyaOptimizedImage";
+import { deriveVariantUrls } from "@/lib/media/image-optimization/variant-urls";
 import { shopImageSrc } from "@/lib/shop-data";
 import { artistCatalogHoodieImageSrc } from "@/lib/elgrandetoto-hoodie-public";
 import { artistCatalogTshirtImageSrc } from "@/lib/elgrandetoto-tshirt-public";
@@ -111,19 +113,27 @@ export function HoodieGallery(props: Props) {
     <div className="relative w-full overflow-hidden rounded-b-[1.5rem] bg-[#0b0b10] sm:rounded-b-[1.75rem]">
       <div className="relative aspect-[4/5] w-full overflow-hidden">
         <AnimatePresence mode="wait" custom={direction} initial={false}>
-          <motion.img
+          <motion.div
             key={mainFile}
-            src={imageSrc(props, mainFile)}
-            alt={`${productName} — view ${safeIndex + 1}`}
             custom={direction}
             variants={reduceMotion ? undefined : mainImageVariants}
             initial={reduceMotion ? false : "enter"}
             animate={reduceMotion ? undefined : "center"}
             exit={reduceMotion ? undefined : "exit"}
             transition={mainTransition}
-            className="absolute inset-0 z-0 h-full w-full object-cover object-center"
-            decoding="async"
-          />
+            className="absolute inset-0 z-0"
+          >
+            <SalvyaOptimizedImage
+              src={imageSrc(props, mainFile)}
+              variants={deriveVariantUrls(imageSrc(props, mainFile))}
+              alt={`${productName} — view ${safeIndex + 1}`}
+              fill
+              context="gallery"
+              priority={safeIndex === 0}
+              sizes="(max-width: 768px) 100vw, 60vw"
+              className="object-cover object-center"
+            />
+          </motion.div>
         </AnimatePresence>
 
         <div

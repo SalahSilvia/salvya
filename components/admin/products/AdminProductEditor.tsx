@@ -259,13 +259,9 @@ export function AdminProductEditor({ mode, productId }: Props) {
       const fd = new FormData();
       fd.append("file", file);
       fd.append("artistSlug", artistSlug.trim());
-      const res = await fetch("/api/admin/upload/product-image", {
-        method: "POST",
-        credentials: "include",
-        body: fd,
-      });
-      const body = (await res.json()) as { ok?: boolean; url?: string; error?: string };
-      if (!res.ok || !body.ok || !body.url) throw new Error(body.error ?? "Upload failed");
+      const { postOptimizedImageUpload } = await import("@/lib/media/client/upload-with-retry");
+      const body = await postOptimizedImageUpload("/api/admin/upload/product-image", fd);
+      if (!body.url) throw new Error("Upload failed");
       return body.url;
     },
     [artistSlug],

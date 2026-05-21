@@ -51,7 +51,9 @@
     "currencyHint": "Change symbol only — prices stay on your country tier unless you select Morocco.",
     "detectedLine": "Detected location: {flag} {country}",
     "detectedUnknown": "Location not detected yet — enable network access or set country below.",
-    "chargeNote": "Checkout is charged in EUR. Prices shown follow your selected region."
+    "chargeNote": "Checkout is charged in EUR. Prices shown follow your selected region.",
+    "mismatchToast": "Network location shows {detected}. Prices stay on {selected}.",
+    "mismatchDismiss": "Got it"
   },
   "menu": {
     "discover": "Discover",
@@ -97,7 +99,16 @@
     "noAccount": "New here?",
     "hasAccount": "Already have an account?",
     "continueWithGoogle": "Continue with Google",
-    "orEmail": "or continue with email"
+    "orEmail": "or continue with email",
+    "signInCardSubtitle": "Sign in with Google or your email. Your bag and likes sync when you return.",
+    "createAccountCardSubtitle": "Fastest with Google, or create a password. One profile for checkout and your bag.",
+    "rememberMe": "Keep me signed in",
+    "rememberMeHint": "Stay signed in on this device until you sign out.",
+    "signingIn": "Signing in…",
+    "creatingAccount": "Creating account…",
+    "signedInSuccess": "Welcome back — redirecting…",
+    "supabaseNotConfigured": "Sign-in is temporarily unavailable. Please try again later.",
+    "clientStartFailed": "Could not start sign-in. Refresh and try again."
   },
   "checkout": {
     "checkout": "Checkout",

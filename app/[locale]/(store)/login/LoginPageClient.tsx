@@ -4,9 +4,22 @@ import Link from "next/link";
 import { useId, useRef, useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useTranslations } from "next-intl";
+import { AuthCard } from "@/components/auth/AuthCard";
 import { AuthDaylight } from "@/components/auth/AuthDaylight";
+import { AuthDivider } from "@/components/auth/AuthDivider";
+import { AuthOAuthLegal } from "@/components/auth/AuthOAuthLegal";
+import { AuthSubmitButton } from "@/components/auth/AuthSubmitButton";
+import { AuthToast } from "@/components/auth/AuthToast";
 import { AuthTopBar } from "@/components/auth/AuthTopBar";
-import { SalvyaLogoImage } from "@/components/brand/SalvyaLogoImage";
+import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
+import { RememberMeRow } from "@/components/auth/RememberMeRow";
+import { useAuthToast } from "@/components/auth/useAuthToast";
+import { signInWithGoogle } from "@/lib/auth/oauth";
+import {
+  getRememberSessionPreference,
+  setRememberSessionPreference,
+} from "@/lib/auth/remember-session";
 import { formatSupabaseAuthError } from "@/lib/supabase/auth-errors";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -42,21 +55,6 @@ function EyeToggleIcon({ visible }: { visible: boolean }) {
   );
 }
 
-function SubmitSpinner() {
-  return (
-    <span className="flex items-center justify-center gap-1" aria-hidden>
-      {[0, 1, 2].map((i) => (
-        <motion.span
-          key={i}
-          className="size-1.5 rounded-full bg-white"
-          animate={{ y: [0, -5, 0], opacity: [0.45, 1, 0.45] }}
-          transition={{ duration: 0.55, repeat: Infinity, delay: i * 0.12, ease: "easeInOut" }}
-        />
-      ))}
-    </span>
-  );
-}
-
 function CheckRow({ children }: { children: React.ReactNode }) {
   return (
     <li className="flex gap-3 text-[15px] leading-snug text-neutral-700">
@@ -74,14 +72,23 @@ const inputClass =
   "mt-2 w-full rounded-xl border border-neutral-200 bg-white px-4 py-3.5 text-[15px] text-neutral-900 shadow-sm outline-none transition-[border-color,box-shadow] placeholder:text-neutral-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/15";
 
 export default function LoginPageClient() {
+  const t = useTranslations("auth");
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = useMemo(() => safeNextPath(searchParams.get("next")), [searchParams]);
   const reduceMotion = useReducedMotion();
+  const { toast, showToast, dismissToast } = useAuthToast();
   const emailId = useId();
   const passwordId = useId();
   const emailRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [oauthBusy, setOauthBusy] = useState(false);
+  const [rememberSession, setRememberSession] = useState(true);
+  const authDisabled = busy || oauthBusy;
+
+  useEffect(() => {
+    setRememberSession(getRememberSessionPreference());
+  }, []);
   const [banner, setBanner] = useState<string | null>(null);
   const [infoBanner, setInfoBanner] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -158,6 +165,27 @@ export default function LoginPageClient() {
     setResendOk("Check your inbox — we sent another confirmation link.");
   }, [lastEmail]);
 
+  const handleGoogleSignIn = useCallback(async () => {
+    setBanner(null);
+    setRememberSessionPreference(rememberSession);
+    if (!isSupabaseConfigured()) {
+      showToast(t("supabaseNotConfigured"), "error");
+      return;
+    }
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      showToast(t("clientStartFailed"), "error");
+      return;
+    }
+    setOauthBusy(true);
+    const result = await signInWithGoogle(supabase, { next: returnTo });
+    setOauthBusy(false);
+    if (!result.ok) {
+      showToast(result.message, "error");
+      setBanner(result.message);
+    }
+  }, [rememberSession, returnTo, showToast, t]);
+
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBanner(null);
@@ -185,6 +213,7 @@ export default function LoginPageClient() {
       return;
     }
 
+    setRememberSessionPreference(rememberSession);
     setBusy(true);
     const { error } = await supabase.auth.signInWithPassword({ email: emailTrim, password });
     setBusy(false);
@@ -192,7 +221,9 @@ export default function LoginPageClient() {
     if (error) {
       const raw = error.message.toLowerCase();
       setShowResend(raw.includes("email not confirmed"));
-      setBanner(formatSupabaseAuthError(error.message));
+      const msg = formatSupabaseAuthError(error.message);
+      setBanner(msg);
+      showToast(msg, "error");
       return;
     }
 
@@ -216,12 +247,14 @@ export default function LoginPageClient() {
     const nextParam = searchParams.get("next");
     const role = await fetchSessionRole();
     const dest = resolvePostLoginRedirect(nextParam, role);
+    showToast(t("signedInSuccess"), "success");
     router.replace(dest);
     router.refresh();
   }
 
   return (
     <AuthDaylight>
+      <AuthToast toast={toast} onDismiss={dismissToast} />
       <AuthTopBar backHref="/" backLabel="Shop home" pill="Sign in" variant="day" />
 
       <main className="min-h-dvh pt-[calc(3.5rem+env(safe-area-inset-top))] lg:grid lg:min-h-dvh lg:grid-cols-[minmax(0,1fr)_min(100%,440px)] xl:grid-cols-[minmax(0,1fr)_460px]">
@@ -265,32 +298,43 @@ export default function LoginPageClient() {
           </div>
 
           <div className="flex flex-1 flex-col justify-center py-10 lg:py-6">
-            <motion.div
-              initial={reduceMotion ? false : { opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease }}
-              className="mx-auto w-full max-w-[400px]"
-            >
-              <div className="rounded-3xl border border-neutral-200/90 bg-white/95 p-8 shadow-[0_24px_64px_-32px_rgba(15,23,42,0.18),0_0_0_1px_rgba(255,255,255,0.8)_inset] ring-1 ring-neutral-900/5 sm:p-9">
-                <div className="flex flex-col items-center text-center">
-                  <div className="flex h-11 items-center justify-center rounded-2xl border border-neutral-200/80 bg-neutral-50/80 px-4">
-                    <SalvyaLogoImage
-                      variant="dark"
-                      alt="Salvya"
-                      className="h-[22px] w-auto max-w-[9rem] object-contain object-left"
-                      fallback="word"
-                      fallbackClassName="text-lg font-bold tracking-tight text-neutral-900"
-                    />
+            <AuthCard
+              title={t("signIn")}
+              subtitle={t("signInCardSubtitle")}
+              footer={
+                <>
+                  <div className="text-center text-[14px] text-neutral-600">
+                    {t("noAccount")}{" "}
+                    <Link href={registerHref(returnTo)} prefetch={false} className="font-semibold text-blue-600 hover:text-blue-700">
+                      {t("createAccount")}
+                    </Link>
                   </div>
-                  <h1 className="mt-6 text-[1.65rem] font-bold leading-tight tracking-[-0.04em] text-neutral-950 sm:text-[1.85rem]">
-                    Sign in
-                  </h1>
-                  <p className="mt-2 max-w-[20rem] text-[14px] leading-relaxed text-neutral-500 sm:text-[15px]">
-                    Enter the email and password for your Salvya account.
-                  </p>
-                </div>
+                  <div className="mt-6 rounded-2xl border border-neutral-200/80 bg-neutral-50/60 px-4 py-4">
+                    <p className="text-center text-[12px] leading-relaxed text-neutral-600">
+                      <span className="font-medium text-neutral-800">Creators</span> — use the same login, then apply from{" "}
+                      <Link href="/menu" prefetch={false} className="font-semibold text-blue-600 hover:text-blue-700">
+                        Menu
+                      </Link>
+                      {" or "}
+                      <Link href="/creator" prefetch={false} className="font-semibold text-blue-600 hover:text-blue-700">
+                        Creator hub
+                      </Link>
+                      .
+                    </p>
+                  </div>
+                </>
+              }
+            >
+              <GoogleAuthButton
+                label={t("continueWithGoogle")}
+                loading={oauthBusy}
+                disabled={authDisabled}
+                onClick={() => void handleGoogleSignIn()}
+              />
+              <AuthOAuthLegal />
+              <AuthDivider label={t("orEmail")} />
 
-                <form id="login-form" onSubmit={onSubmit} className="mt-8 space-y-5" noValidate>
+              <form id="login-form" onSubmit={onSubmit} className="space-y-5" noValidate>
                   <div>
                     <label htmlFor={emailId} className="text-[13px] font-semibold text-neutral-700">
                       Email
@@ -418,6 +462,14 @@ export default function LoginPageClient() {
                     ) : null}
                   </AnimatePresence>
 
+                  <RememberMeRow
+                    checked={rememberSession}
+                    disabled={authDisabled}
+                    onChange={setRememberSession}
+                    label={t("rememberMe")}
+                    hint={t("rememberMeHint")}
+                  />
+
                   {showResend && lastEmail.trim() ? (
                     <div className="rounded-xl border border-blue-200/70 bg-blue-50/80 px-4 py-3.5">
                       <p className="text-[13px] font-medium text-blue-950">Confirm your email to sign in.</p>
@@ -433,42 +485,14 @@ export default function LoginPageClient() {
                     </div>
                   ) : null}
 
-                  <motion.button
-                    type="submit"
-                    disabled={busy}
-                    whileTap={reduceMotion || busy ? undefined : { scale: 0.985 }}
-                    className="relative mt-1 flex min-h-[50px] w-full items-center justify-center overflow-hidden rounded-xl bg-blue-600 text-[15px] font-semibold text-white shadow-[0_14px_36px_-12px_rgba(37,99,235,0.55)] transition-[box-shadow,background-color,opacity] hover:bg-blue-700 hover:shadow-[0_18px_40px_-10px_rgba(37,99,235,0.45)] disabled:pointer-events-none disabled:opacity-[0.65]"
-                  >
-                    <span className="relative flex items-center gap-2.5">
-                      {busy && !reduceMotion ? <SubmitSpinner /> : null}
-                      {busy ? "Signing in…" : "Sign in"}
-                    </span>
-                  </motion.button>
+                  <AuthSubmitButton
+                    label={t("signIn")}
+                    loadingLabel={t("signingIn")}
+                    busy={busy}
+                    disabled={oauthBusy}
+                  />
                 </form>
-
-                <div className="mt-8 text-center text-[14px] text-neutral-600">
-                  New to Salvya?{" "}
-                  <Link href={registerHref(returnTo)} prefetch={false} className="font-semibold text-blue-600 hover:text-blue-700">
-                    Create account
-                  </Link>
-                </div>
-
-                <div className="mt-6 rounded-2xl border border-neutral-200/80 bg-neutral-50/60 px-4 py-4">
-                  <p className="text-center text-[12px] leading-relaxed text-neutral-600">
-                    <span className="font-medium text-neutral-800">Creators</span> — use the same login, then apply from{" "}
-                    <Link href="/menu" prefetch={false} className="font-semibold text-blue-600 hover:text-blue-700">
-                      Menu
-                    </Link>
-                    {" or "}
-                    <Link href="/creator" prefetch={false} className="font-semibold text-blue-600 hover:text-blue-700">
-                      Creator hub
-                    </Link>
-                    .
-                  </p>
-                </div>
-
-              </div>
-            </motion.div>
+            </AuthCard>
           </div>
         </div>
       </main>

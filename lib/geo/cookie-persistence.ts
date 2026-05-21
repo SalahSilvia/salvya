@@ -28,6 +28,8 @@ export function applyGeoCookies(
     weakDetection: boolean;
     source: GeoDetectSource | null;
     writePref: boolean;
+    /** Live network geo for banners; may differ from `country` when Morocco is manually locked. */
+    detectedCountry?: string | null;
   },
 ): string {
   const writePref =
@@ -46,7 +48,8 @@ export function applyGeoCookies(
   });
 
   const detectedMaxAge = opts.weakDetection ? GEO_WEAK_COOKIE_MAX_AGE : GEO_COOKIE_MAX_AGE;
-  res.cookies.set(COOKIE_DETECTED_COUNTRY, opts.country, { ...baseOpts, maxAge: detectedMaxAge });
+  const detectedValue = opts.detectedCountry ?? opts.country;
+  res.cookies.set(COOKIE_DETECTED_COUNTRY, detectedValue, { ...baseOpts, maxAge: detectedMaxAge });
 
   if (opts.weakDetection) {
     res.cookies.set(COOKIE_GEO_WEAK, "1", { ...baseOpts, maxAge: GEO_WEAK_COOKIE_MAX_AGE });

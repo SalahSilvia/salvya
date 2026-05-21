@@ -51,7 +51,9 @@
     "currencyHint": "Symbole uniquement — les prix restent ceux de votre pays sauf si vous choisissez Maroc.",
     "detectedLine": "Position détectée : {flag} {country}",
     "detectedUnknown": "Position non détectée — choisissez votre pays ci-dessous.",
-    "chargeNote": "Le paiement est en EUR. Les prix affichés suivent votre région."
+    "chargeNote": "Le paiement est en EUR. Les prix affichés suivent votre région.",
+    "mismatchToast": "Le réseau indique {detected}. Les prix restent en {selected}.",
+    "mismatchDismiss": "Compris"
   },
   "menu": {
     "discover": "Découvrir",
@@ -97,7 +99,16 @@
     "noAccount": "Nouveau ici ?",
     "hasAccount": "Déjà un compte ?",
     "continueWithGoogle": "Continuer avec Google",
-    "orEmail": "ou continuer par e-mail"
+    "orEmail": "ou continuer par e-mail",
+    "signInCardSubtitle": "Connectez-vous avec Google ou votre e-mail. Votre panier et vos favoris se synchronisent.",
+    "createAccountCardSubtitle": "Le plus rapide avec Google, ou créez un mot de passe. Un seul profil pour le checkout.",
+    "rememberMe": "Rester connecté",
+    "rememberMeHint": "Restez connecté sur cet appareil jusqu'à déconnexion.",
+    "signingIn": "Connexion…",
+    "creatingAccount": "Création du compte…",
+    "signedInSuccess": "Bon retour — redirection…",
+    "supabaseNotConfigured": "Connexion temporairement indisponible.",
+    "clientStartFailed": "Impossible de démarrer la connexion. Actualisez la page."
   },
   "checkout": {
     "checkout": "Paiement",

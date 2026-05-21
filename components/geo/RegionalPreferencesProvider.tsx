@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -26,8 +27,19 @@ import {
   readGeoCookiesFromDocument,
 } from "@/lib/geo/debug";
 import {
+  persistGeoConsistencyRepairClient,
+  repairGeoCookieState,
+} from "@/lib/geo/geo-consistency";
+import { readGeoCookieState } from "@/lib/geo/cookie-state";
+import {
+  enforceMoroccoManualSelection,
+  isMoroccoManualLock,
+  MOROCCO_COUNTRY,
+} from "@/lib/geo/morocco-stability";
+import {
   localeApplyForMorocco,
   persistGeoChoice,
+  pricingCountryFromSnapshot,
   readClientRegionalPreferences,
   REGIONAL_PREFERENCES_EVENT,
   type RegionalPreferencesSnapshot,
@@ -78,35 +90,47 @@ export function RegionalPreferencesProvider({ children, initial }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const [snapshot, setSnapshot] = useState(initial);
+  const autoApplyGuardRef = useRef<string | null>(null);
 
-  const pricingCountry = snapshot.geoManual
-    ? (snapshot.prefCountry ?? snapshot.detectedCountry)
-    : snapshot.weakDetection
-      ? snapshot.prefCountry
-      : (snapshot.prefCountry ?? snapshot.detectedCountry);
+  const pricingCountry = pricingCountryFromSnapshot(snapshot);
   const prefCountry = snapshot.prefCountry ?? snapshot.detectedCountry;
   const marketCode = countryToMarketCode(pricingCountry);
 
   const applyRegionalPreferences = useCallback(
     async (input: ApplyRegionalPreferencesInput) => {
-      persistGeoChoice({
-        currency: input.currency,
+      const enforced = enforceMoroccoManualSelection({
         country: input.country,
-        resolved: true,
+        currency: input.currency,
         manual: input.manual,
+      });
+      const keepDetected =
+        enforced.manual && enforced.country === MOROCCO_COUNTRY
+          ? snapshot.detectedCountry
+          : null;
+
+      persistGeoChoice({
+        currency: enforced.currency,
+        country: enforced.country,
+        resolved: true,
+        manual: enforced.manual,
         weakDetection: false,
+        detectedOnly: keepDetected,
       });
       setSnapshot((prev) => ({
         ...prev,
-        prefCountry: input.country,
-        detectedCountry: input.country,
-        displayCurrency: input.currency,
+        prefCountry: enforced.country,
+        detectedCountry: keepDetected ?? enforced.country,
+        displayCurrency: enforced.currency,
         geoResolved: true,
-        geoManual: input.manual ? true : prev.geoManual,
+        geoManual: enforced.manual ? true : prev.geoManual,
         weakDetection: false,
       }));
 
-      void syncRegionalPreferencesToServer(input).catch(() => undefined);
+      void syncRegionalPreferencesToServer({
+        country: enforced.country,
+        currency: enforced.currency,
+        locale: input.locale,
+      }).catch(() => undefined);
 
       if (input.locale && input.locale !== locale) {
         router.replace(pathname, { locale: input.locale });
@@ -114,7 +138,7 @@ export function RegionalPreferencesProvider({ children, initial }: Props) {
         router.refresh();
       }
     },
-    [locale, pathname, router],
+    [locale, pathname, router, snapshot.detectedCountry],
   );
 
   const setDisplayCurrency = useCallback(
@@ -172,8 +196,20 @@ export function RegionalPreferencesProvider({ children, initial }: Props) {
         const matchesProfile =
           normalizeCountryCode(prev.prefCountry) === normalizeCountryCode(profile.countryCode) &&
           prev.displayCurrency === profile.currency;
+        const moroccoLocked = isMoroccoManualLock({
+          pref: normalizeCountryCode(prev.prefCountry),
+          detected: normalizeCountryCode(prev.detectedCountry),
+          displayCurrency: prev.displayCurrency,
+          geoManual: prev.geoManual,
+          geoWeak: prev.weakDetection === true,
+          geoResolved: prev.geoResolved,
+        });
         const shouldAutoApply =
-          !prev.geoManual && !matchesProfile && data.permanent === true && !data.weakDetection;
+          !prev.geoManual &&
+          !moroccoLocked &&
+          !matchesProfile &&
+          data.permanent === true &&
+          !data.weakDetection;
 
         if (data.weakDetection && !prev.geoManual) {
           geoLogBrowser("weak detection — session hint only, no pref lock", { country });
@@ -186,25 +222,29 @@ export function RegionalPreferencesProvider({ children, initial }: Props) {
         }
 
         if (shouldAutoApply) {
-          geoLogBrowser("applying regional defaults =", {
-            country: profile.countryCode,
-            currency: profile.currency,
-            priceTier: marketCodeToPriceTier(countryToMarketCode(profile.countryCode)),
-            geoManual: false,
-          });
-          const localeApply =
-            profile.countryCode === "MA"
-              ? localeApplyForMorocco(locale, profile.locale)
-              : profile.locale !== locale
-                ? profile.locale
-                : undefined;
-          queueMicrotask(() => {
-            void applyRegionalPreferences({
+          const guardKey = `${profile.countryCode}:${profile.currency}`;
+          if (autoApplyGuardRef.current !== guardKey) {
+            autoApplyGuardRef.current = guardKey;
+            geoLogBrowser("applying regional defaults =", {
               country: profile.countryCode,
               currency: profile.currency,
-              locale: localeApply,
+              priceTier: marketCodeToPriceTier(countryToMarketCode(profile.countryCode)),
+              geoManual: false,
             });
-          });
+            const localeApply =
+              profile.countryCode === "MA"
+                ? localeApplyForMorocco(locale, profile.locale)
+                : profile.locale !== locale
+                  ? profile.locale
+                  : undefined;
+            queueMicrotask(() => {
+              void applyRegionalPreferences({
+                country: profile.countryCode,
+                currency: profile.currency,
+                locale: localeApply,
+              });
+            });
+          }
         } else if (prev.geoManual) {
           geoLogBrowser("skip auto-apply — manual country lock", {
             pref: prev.prefCountry,
@@ -237,6 +277,28 @@ export function RegionalPreferencesProvider({ children, initial }: Props) {
   );
 
   useEffect(() => {
+    const get = (name: string) => {
+      const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+      return match ? decodeURIComponent(match[1]) : undefined;
+    };
+    const repair = repairGeoCookieState(readGeoCookieState(get));
+    if (repair.needsCookieWrite) {
+      persistGeoConsistencyRepairClient(repair);
+      setSnapshot((prev) => {
+        const next = repair.state;
+        return {
+          ...prev,
+          prefCountry: next.pref ?? prev.prefCountry,
+          displayCurrency: next.displayCurrency ?? prev.displayCurrency,
+          geoResolved: next.geoResolved,
+          geoManual: next.geoManual,
+          weakDetection: next.geoWeak,
+        };
+      });
+    }
+  }, []);
+
+  useEffect(() => {
     geoLogBrowser("hydration initial snapshot =", formatRegionalSnapshotForLog(initial, { locale, marketCode }));
     if (initial.bootstrapCountry && initial.bootstrapCurrency) {
       geoLogBrowser("persisting SSR bootstrap to cookies =", {
@@ -255,11 +317,10 @@ export function RegionalPreferencesProvider({ children, initial }: Props) {
   useEffect(() => {
     const onRegionalUpdate = () => {
       setSnapshot(readClientRegionalPreferences());
-      void syncGeoDetection();
     };
     window.addEventListener(REGIONAL_PREFERENCES_EVENT, onRegionalUpdate);
     return () => window.removeEventListener(REGIONAL_PREFERENCES_EVENT, onRegionalUpdate);
-  }, [syncGeoDetection]);
+  }, []);
 
   const value = useMemo(
     () => ({

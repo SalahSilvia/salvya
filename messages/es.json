@@ -44,7 +44,9 @@
     "switch": "Cambiar",
     "stay": "Quedarme",
     "currencyTitle": "Moneda de visualización",
-    "chargeNote": "El pago se realiza en EUR. Los precios mostrados siguen tu región."
+    "chargeNote": "El pago se realiza en EUR. Los precios mostrados siguen tu región.",
+    "mismatchToast": "La red indica {detected}. Los precios siguen en {selected}.",
+    "mismatchDismiss": "Entendido"
   },
   "menu": {
     "discover": "Descubrir",
@@ -90,7 +92,16 @@
     "noAccount": "¿Nuevo aquí?",
     "hasAccount": "¿Ya tienes cuenta?",
     "continueWithGoogle": "Continuar con Google",
-    "orEmail": "o continuar con correo"
+    "orEmail": "o continuar con correo",
+    "signInCardSubtitle": "Inicia sesión con Google o tu correo. Tu bolsa y favoritos se sincronizan.",
+    "createAccountCardSubtitle": "Más rápido con Google o crea una contraseña. Un perfil para el checkout.",
+    "rememberMe": "Mantener sesión iniciada",
+    "rememberMeHint": "Permanece conectado en este dispositivo hasta cerrar sesión.",
+    "signingIn": "Iniciando sesión…",
+    "creatingAccount": "Creando cuenta…",
+    "signedInSuccess": "Bienvenido — redirigiendo…",
+    "supabaseNotConfigured": "Inicio de sesión no disponible temporalmente.",
+    "clientStartFailed": "No se pudo iniciar sesión. Actualiza la página."
   },
   "checkout": {
     "checkout": "Checkout",

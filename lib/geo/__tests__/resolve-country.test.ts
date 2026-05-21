@@ -22,6 +22,31 @@ describe("resolveShopperCountryDetailed", () => {
     expect(result.weakDetection).toBe(false);
   });
 
+  it("saved pref cookie beats conflicting edge country", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const headers = new Headers({
+      "x-vercel-ip-country": "FR",
+    });
+    const result = await resolveShopperCountryDetailed(headers, {
+      savedPrefCountry: "MA",
+    });
+    expect(result.country).toBe("MA");
+    expect(result.source).toBe("cookie");
+    expect(result.weakDetection).toBe(false);
+  });
+
+  it("ar-MA accept-language is strong Morocco (not weak Paris-only)", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const headers = new Headers({
+      [SALVYA_TZ_HEADER]: "Europe/Paris",
+      "accept-language": "ar-MA,ar;q=0.9",
+    });
+    const result = await resolveShopperCountryDetailed(headers);
+    expect(result.country).toBe("MA");
+    expect(result.weakDetection).toBe(false);
+    expect(result.persistable).toBe(true);
+  });
+
   it("MA edge beats French browser signals", async () => {
     vi.stubEnv("NODE_ENV", "production");
     const headers = new Headers({

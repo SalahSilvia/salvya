@@ -104,7 +104,9 @@ export function AdminImageDropzone({
             <span className="text-[13px] font-semibold text-[#202223]">
               {uploading ? "Uploading…" : "Drop image or click"}
             </span>
-            <span className={`mt-1 text-[11px] ${adminMuted}`}>JPEG, PNG, WebP · max 8 MB</span>
+            <span className={`mt-1 text-[11px] ${adminMuted}`}>
+              JPEG, PNG, WebP · max 8 MB · auto-compressed to WebP variants
+            </span>
           </label>
         )}
 

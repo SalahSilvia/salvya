@@ -27,9 +27,13 @@ const supabaseImagePatterns = supabaseImageRemotePatterns();
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: supabaseImagePatterns.length ? supabaseImagePatterns : undefined,
+    formats: ["image/avif", "image/webp"],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
+    imageSizes: [64, 96, 128, 256, 384, 480],
+    minimumCacheTTL: 60 * 60 * 24 * 30,
   },
   // Avoid broken webpack vendor-chunks for Supabase when .next is rebuilt mid-dev.
-  serverExternalPackages: ["@supabase/supabase-js", "@supabase/ssr"],
+  serverExternalPackages: ["@supabase/supabase-js", "@supabase/ssr", "sharp"],
   experimental: {
     optimizePackageImports: ["framer-motion", "recharts", "date-fns"],
   },

@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { CustomerShellRedirect } from "@/components/member/CustomerShellRedirect";
-import { buildPrivatePageMetadata } from "@/lib/seo/metadata";
+import { buildAuthPageMetadata } from "@/lib/auth/auth-metadata";
 
-export const metadata: Metadata = buildPrivatePageMetadata({
-  title: "Create account",
-  description: "Create a Salvya customer account to save your details, track orders, and shop artist merch faster.",
-  path: "/register",
-});
+type Props = { children: React.ReactNode; params: Promise<{ locale: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params;
+  return buildAuthPageMetadata(locale, "register");
+}
 
 export default function RegisterLayout({ children }: { children: React.ReactNode }) {
   return (

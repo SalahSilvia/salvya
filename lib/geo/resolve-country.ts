@@ -7,7 +7,14 @@ import { geoLogServer, isGeoDebugEnabled } from "@/lib/geo/debug";
 import { getClientIpFromHeaders } from "@/lib/geo/client-ip";
 import { lookupCountryFromIp } from "@/lib/geo/ip-lookup";
 import { isLocalhostRequest } from "@/lib/geo/localhost-geo";
-import { SALVYA_TZ_OFFSET_HEADER } from "@/lib/geo/morocco-heuristic";
+import {
+  SALVYA_INTL_LOCALES_HEADER,
+  SALVYA_TZ_OFFSET_HEADER,
+} from "@/lib/geo/morocco-heuristic";
+import {
+  inferMoroccoFromDeviceSignals,
+  shouldPreferMoroccoOverEdge,
+} from "@/lib/geo/morocco-stability";
 import { shouldPersistPrefCountry } from "@/lib/geo/persist-policy";
 import { isMoroccoTimezoneOffset, parseTimezoneOffsetMinutes } from "@/lib/geo/tz-offset";
 import type {
@@ -27,11 +34,14 @@ const WEAK_ONLY_SOURCES = new Set<GeoDetectSource>(["timezone", "accept-language
 
 export type ResolveGeoContext = {
   searchParams?: URLSearchParams;
-  /** Strong pref/detected from cookies (not weak). */
+  /** Strong pref/detected from cookies (not weak). @deprecated use savedPrefCountry */
   persistedStrongCountry?: string | null;
+  /** `salvya_pref_country` — priority #2 before live geo detection. */
+  savedPrefCountry?: string | null;
   manualCountry?: string | null;
   displayCurrency?: string | null;
   geoManual?: boolean;
+  geoWeak?: boolean;
 };
 
 type Signal = GeoSignalTrace;
@@ -125,12 +135,13 @@ function tzOffsetFromHeaders(headers: Headers): number | null {
 }
 
 /**
- * Strict production order:
- * 1. Dev override (dev only)
- * 2. Manual user country (from cookies)
- * 3. Edge / client IP (ONLY strong auto sources)
- * 4. Strong persisted cookie
- * 5. Weak signals (timezone / locale) — session hint only, never persist alone
+ * Production order:
+ * 1. Dev override
+ * 2. Manual user country (locks selection; never auto-switch)
+ * 3. Saved pref cookie (beats temporary FR edge on Moroccan ISPs)
+ * 4. Strong Morocco device signals (Casablanca TZ, ar-MA / fr-MA)
+ * 5. Edge / IP (unless contradicted by Morocco device signals)
+ * 6. Morocco Paris heuristic + weak signals
  */
 export async function resolveShopperCountryDetailed(
   headers: Headers,
@@ -192,6 +203,8 @@ export async function resolveShopperCountryDetailed(
     });
   }
 
+  const intlLocales = headers.get(SALVYA_INTL_LOCALES_HEADER);
+
   if (ctx.geoManual && ctx.manualCountry) {
     return finalizeResolution(
       buildResolution({
@@ -217,8 +230,99 @@ export async function resolveShopperCountryDetailed(
     );
   }
 
+  const savedPref =
+    normalizeCountryCode(ctx.savedPrefCountry) ??
+    normalizeCountryCode(ctx.persistedStrongCountry);
+  const moroccoPrefLocked = savedPref === "MA" && ctx.geoManual;
+  if (savedPref && (!ctx.geoWeak || savedPref === "MA" || moroccoPrefLocked)) {
+    return finalizeResolution(
+      buildResolution({
+        country: savedPref,
+        source: "cookie",
+        confidence: "HIGH",
+        weakDetection: false,
+        persistable: true,
+        signals: [{ country: savedPref, source: "cookie", weight: 90 }],
+        reason: "Saved country preference cookie (manual selection or prior strong geo)",
+        overrideSource: null,
+        edgeCountry,
+        ipCountry,
+        timezone,
+        tzOffsetMinutes,
+        acceptLanguage,
+        browserLocaleCountry,
+        isLocalDev,
+        edgeAvailable,
+        ipAvailable,
+        scores: emptyScores,
+      }),
+    );
+  }
+
+  const moroccoDevice = inferMoroccoFromDeviceSignals({
+    timezone,
+    acceptLanguage,
+    tzOffsetHeader: headers.get(SALVYA_TZ_OFFSET_HEADER),
+    intlLocalesHeader: intlLocales,
+    displayCurrency: ctx.displayCurrency,
+    geoManual: ctx.geoManual,
+  });
+
+  if (moroccoDevice?.strength === "strong") {
+    return finalizeResolution(
+      buildResolution({
+        country: moroccoDevice.country,
+        source: moroccoDevice.source,
+        confidence: "HIGH",
+        weakDetection: false,
+        persistable: moroccoDevice.persistable,
+        signals: [{ country: "MA", source: moroccoDevice.source, weight: 98 }],
+        reason: moroccoDevice.reason,
+        overrideSource: null,
+        edgeCountry,
+        ipCountry,
+        timezone,
+        tzOffsetMinutes,
+        acceptLanguage,
+        browserLocaleCountry,
+        isLocalDev,
+        edgeAvailable,
+        ipAvailable,
+        scores: emptyScores,
+      }),
+    );
+  }
+
   const strongCountry = normalizeCountryCode(edgeCountry) ?? normalizeCountryCode(ipCountry);
   if (strongCountry) {
+    if (shouldPreferMoroccoOverEdge(strongCountry, moroccoDevice)) {
+      return finalizeResolution(
+        buildResolution({
+          country: "MA",
+          source: moroccoDevice!.source,
+          confidence: "MEDIUM",
+          weakDetection: false,
+          persistable: moroccoDevice!.persistable,
+          signals: [
+            { country: "MA", source: moroccoDevice!.source, weight: 96 },
+            { country: strongCountry, source: edgeCountry ? "edge" : "ip", weight: 70 },
+          ],
+          reason: `${moroccoDevice!.reason} — overrides ${edgeCountry ? "edge" : "ip"} ${strongCountry} (Moroccan ISP geo)`,
+          overrideSource: null,
+          edgeCountry,
+          ipCountry,
+          timezone,
+          tzOffsetMinutes,
+          acceptLanguage,
+          browserLocaleCountry,
+          isLocalDev,
+          edgeAvailable,
+          ipAvailable,
+          scores: emptyScores,
+        }),
+      );
+    }
+
     const source: GeoDetectSource = edgeCountry ? "edge" : "ip";
     const localeAgrees = browserLocaleCountry === strongCountry;
     return finalizeResolution(
@@ -249,17 +353,16 @@ export async function resolveShopperCountryDetailed(
     );
   }
 
-  const persisted = normalizeCountryCode(ctx.persistedStrongCountry);
-  if (persisted) {
+  if (moroccoDevice) {
     return finalizeResolution(
       buildResolution({
-        country: persisted,
-        source: "cookie",
-        confidence: "HIGH",
-        weakDetection: false,
-        persistable: true,
-        signals: [{ country: persisted, source: "cookie", weight: 75 }],
-        reason: "Strong persisted country cookie (from prior IP/manual)",
+        country: moroccoDevice.country,
+        source: moroccoDevice.source,
+        confidence: "MEDIUM",
+        weakDetection: !moroccoDevice.persistable,
+        persistable: moroccoDevice.persistable,
+        signals: [{ country: "MA", source: moroccoDevice.source, weight: 95 }],
+        reason: moroccoDevice.reason,
         overrideSource: null,
         edgeCountry,
         ipCountry,
@@ -270,6 +373,7 @@ export async function resolveShopperCountryDetailed(
         isLocalDev,
         edgeAvailable,
         ipAvailable,
+        scores: emptyScores,
       }),
     );
   }

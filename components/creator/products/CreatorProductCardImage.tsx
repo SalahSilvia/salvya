@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import { useMemo, useState } from "react";
+import { SalvyaOptimizedImage } from "@/components/media/SalvyaOptimizedImage";
 import type { StorefrontProductWithVariants } from "@/lib/catalog/attach-variants-to-products";
 import { collectProductImageCandidates } from "@/lib/catalog/product-image-candidates";
-import { shouldUnoptimizeProductImage } from "@/lib/media/product-image-url-client";
+import { deriveVariantUrls } from "@/lib/media/image-optimization/variant-urls";
 
 type Props = {
   product: StorefrontProductWithVariants;
@@ -16,6 +16,7 @@ export function CreatorProductCardImage({ product, title }: Props) {
   const candidates = useMemo(() => collectProductImageCandidates(product), [product]);
   const [index, setIndex] = useState(0);
   const src = index < candidates.length ? candidates[index] : null;
+  const variants = useMemo(() => (src ? deriveVariantUrls(src) : null), [src]);
 
   if (!src) {
     return (
@@ -26,11 +27,12 @@ export function CreatorProductCardImage({ product, title }: Props) {
   }
 
   return (
-    <Image
+    <SalvyaOptimizedImage
       src={src}
+      variants={variants}
       alt={title}
       fill
-      unoptimized={shouldUnoptimizeProductImage(src)}
+      context="card"
       className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
       sizes="(max-width:640px) 50vw, 320px"
       onError={() => {

@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import { CustomerShellRedirect } from "@/components/member/CustomerShellRedirect";
-import { buildPrivatePageMetadata } from "@/lib/seo/metadata";
+import { buildAuthPageMetadata } from "@/lib/auth/auth-metadata";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = buildPrivatePageMetadata({
-  title: "Sign in",
-  description: "Log in to your Salvya account to manage orders and saved details.",
-  path: "/login",
-});
+type Props = { children: React.ReactNode; params: Promise<{ locale: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params;
+  return buildAuthPageMetadata(locale, "login");
+}
 
 export default function LoginLayout({ children }: { children: React.ReactNode }) {
   return (

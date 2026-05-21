@@ -14,6 +14,7 @@ import { LikesProvider } from "@/components/likes/LikesProvider";
 import { NotificationsProvider } from "@/components/notifications/NotificationsProvider";
 import { MenuNavigationRecorder } from "@/components/layout/menu/MenuNavigationRecorder";
 import { CreatorReferralCapture } from "@/components/creator/CreatorReferralCapture";
+import { GeoCountryMismatchToast } from "@/components/geo/GeoCountryMismatchToast";
 import { GeoLocaleSuggestion } from "@/components/geo/GeoLocaleSuggestion";
 import { RegionalLocaleBootstrap } from "@/components/geo/RegionalLocaleBootstrap";
 import { RegionalPreferencesBootstrap } from "@/components/geo/RegionalPreferencesBootstrap";
@@ -51,6 +52,7 @@ export function LocaleProviders({ children, locale, messages, regionalPrefs, acc
                     <CreatorReferralCapture />
                   </Suspense>
                   <CookieConsentBanner />
+                  <GeoCountryMismatchToast />
                   <GeoLocaleSuggestion
                     initialSnapshot={regionalPrefs}
                     acceptLanguage={acceptLanguage}
