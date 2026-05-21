@@ -37,16 +37,24 @@
     "switchTo": "Passa a {language}"
   },
   "geo": {
-    "ariaLabel": "Suggerimento regionale",
+    "ariaLabel": "Suggerimento impostazioni regionali",
     "detected": "{country} rilevato",
-    "headline": "Adattare Salvya alla tua regione?",
+    "headline": "Visualizzare Salvya per la tua regione?",
     "offer": "{locale} · {currency}",
-    "switch": "Cambia",
-    "stay": "Resta qui",
+    "switch": "Cambia regione",
+    "stay": "Mantieni regione attuale",
+    "regionalTitle": "Regione e lingua",
+    "countryTitle": "Paese e prezzi",
+    "pricingMorocco": "Prezzi Marocco in MAD. Cambia paese per le tariffe internazionali.",
+    "pricingInternational": "Prezzi catalogo internazionale. Seleziona Marocco per i prezzi locali in MAD.",
     "currencyTitle": "Valuta visualizzata",
-    "chargeNote": "Il pagamento è in EUR. I prezzi mostrati seguono la tua regione.",
-    "mismatchToast": "La rete indica {detected}. I prezzi restano su {selected}.",
-    "mismatchDismiss": "OK"
+    "currencyHint": "Modifica solo il simbolo. I prezzi seguono il paese selezionato, salvo Marocco.",
+    "detectedLine": "Posizione rilevata: {flag} {country}",
+    "detectedUnknown": "Posizione non disponibile — scegli il paese qui sotto.",
+    "chargeNote": "Il pagamento è in EUR. I prezzi mostrati riflettono la regione selezionata.",
+    "moroccoStorefrontHint": "Store Marocco · Prezzi in dirham marocchino (MAD) · Consegna disponibile in Marocco",
+    "mismatchToast": "La connessione suggerisce {detected}. I prezzi restano su {selected}.",
+    "mismatchDismiss": "Capito"
   },
   "menu": {
     "discover": "Scopri",
