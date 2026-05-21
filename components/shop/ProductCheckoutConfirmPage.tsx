@@ -24,6 +24,7 @@ import { tryClaimMetaPurchaseFire } from "@/lib/analytics/purchase-dedupe";
 import { makeProductId } from "@/lib/member/likes-storage";
 import { notifyOrderPlaced } from "@/lib/notifications/automation";
 import { readCreatorReferralFromDocument } from "@/lib/creator/referral-cookie";
+import { useCheckoutLabels } from "@/lib/i18n/use-checkout-labels";
 
 const serif = "ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif";
 
@@ -33,17 +34,15 @@ function firstNameFromFull(full: string): string {
   return t.split(/\s+/)[0] ?? "there";
 }
 
-function paymentStatusNote(method: "cod" | "paypal" | undefined, paymentStatus?: OrderPaymentStatus): string {
-  if (method === "cod") {
-    return "Cash on delivery — pay the courier when your parcel arrives. Your order is confirmed.";
-  }
-  if (paymentStatus === "paid") {
-    return "Payment verified with PayPal. We will email you when your order ships.";
-  }
-  if (method === "paypal") {
-    return "We are confirming your PayPal payment securely on our servers.";
-  }
-  return "Your order is confirmed. We will email you when it ships.";
+function paymentStatusNote(
+  t: ReturnType<typeof useCheckoutLabels>["t"],
+  method: "cod" | "paypal" | undefined,
+  paymentStatus?: OrderPaymentStatus,
+): string {
+  if (method === "cod") return t("codNote");
+  if (paymentStatus === "paid") return t("paidNote");
+  if (method === "paypal") return t("verifyingPayPal");
+  return t("orderConfirmed");
 }
 
 const COLOR_IDS = ["ink", "bone", "twilight"] as const;
@@ -223,14 +222,15 @@ function TimelineIcon({ type }: { type: "check" | "box" | "truck" }) {
 }
 
 function DeliveryTimeline({ reduceMotion }: { reduceMotion: boolean | null }) {
+  const { t } = useCheckoutLabels();
   const steps = [
-    { label: "Confirmed", sub: "We have your order", icon: "check" as const },
-    { label: "Preparing", sub: "Packing with care", icon: "box" as const },
-    { label: "On the way", sub: "Arriving in days", icon: "truck" as const },
+    { label: t("timelineConfirmed"), sub: t("timelineConfirmed"), icon: "check" as const },
+    { label: t("timelinePreparing"), sub: t("timelinePreparing"), icon: "box" as const },
+    { label: t("timelineShipped"), sub: t("timelineShipped"), icon: "truck" as const },
   ];
   return (
     <div className="mt-6 border-t border-white/[0.08] pt-5">
-      <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-normal text-white/40">What happens next</p>
+      <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-normal text-white/40">{t("timelineWhatNext")}</p>
       <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
         {steps.map((s, i) => (
           <motion.div
@@ -253,10 +253,11 @@ function DeliveryTimeline({ reduceMotion }: { reduceMotion: boolean | null }) {
 }
 
 function TrustChips() {
+  const { t } = useCheckoutLabels();
   const items = [
-    { label: "Secure checkout", icon: "lock" as const },
-    { label: "Tracked delivery", icon: "truck" as const },
-    { label: "Salvya quality", icon: "star" as const },
+    { label: t("buyPanel.trustLine"), icon: "lock" as const },
+    { label: t("shippingLabel"), icon: "truck" as const },
+    { label: t("wizardKicker"), icon: "star" as const },
   ];
   return (
     <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
@@ -293,6 +294,7 @@ function TrustChips() {
 }
 
 function LoadingHero({ verifyingPayPal }: { verifyingPayPal?: boolean }) {
+  const { t } = useCheckoutLabels();
   return (
     <div className="mx-auto w-full max-w-lg space-y-6 px-2 text-center">
       <motion.div
@@ -306,15 +308,13 @@ function LoadingHero({ verifyingPayPal }: { verifyingPayPal?: boolean }) {
       </motion.div>
       <div className="space-y-3">
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/45">
-          {verifyingPayPal ? "Securing payment" : "Placing order"}
+          {verifyingPayPal ? t("securingPayment") : t("placingOrder")}
         </p>
         <h2 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
-          {verifyingPayPal ? "Verifying PayPal with Salvya…" : "Almost there…"}
+          {verifyingPayPal ? t("verifyingPayPal") : t("almostThere")}
         </h2>
         <p className="mx-auto max-w-sm text-[13px] leading-relaxed text-white/55">
-          {verifyingPayPal
-            ? "We confirm amount and capture with PayPal before your order is marked paid. This usually takes a few seconds."
-            : "Saving your order and sending confirmation."}
+          {verifyingPayPal ? t("paypalVerifyNote") : t("placingOrder")}
         </p>
       </div>
     </div>
@@ -336,6 +336,7 @@ export function ProductCheckoutConfirmPage({
   variantId,
   bag,
 }: ProductCheckoutPageProps) {
+  const { t, tCommon, tProduct } = useCheckoutLabels();
   const pathname = usePathname();
   const router = useRouter();
   const reduceMotion = useReducedMotion();
@@ -455,7 +456,7 @@ export function ProductCheckoutConfirmPage({
       const placementKey = session.placementKey?.trim() || ensureCheckoutPlacementKey(detailsPath);
       if (!placementKey) {
         if (!cancelled) {
-          setOrderError("Checkout session expired. Return to payment and try again.");
+          setOrderError(t("confirmFailed"));
           setPlacingOrder(false);
           placeStarted.current = false;
         }
@@ -545,6 +546,7 @@ export function ProductCheckoutConfirmPage({
     recapSize,
     session,
     variantId,
+    t,
   ]);
 
   useEffect(() => {
@@ -593,7 +595,7 @@ export function ProductCheckoutConfirmPage({
             href="/"
             className="group relative text-[14px] font-semibold tracking-tight text-white transition-colors hover:text-white"
           >
-            <span className="relative z-[1]">Salvya</span>
+            <span className="relative z-[1]">{tCommon("brand")}</span>
             <span className="absolute -bottom-0.5 left-0 h-px w-0 bg-gradient-to-r from-[#5b8cff] to-emerald-400 transition-all duration-300 group-hover:w-full" />
           </Link>
           <div className="flex items-center gap-2">
@@ -602,11 +604,11 @@ export function ProductCheckoutConfirmPage({
             ) : null}
             {orderRef ? (
               <span className="rounded-full border border-emerald-400/35 bg-gradient-to-r from-emerald-500/20 to-[#2D6BFF]/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-normal text-emerald-100/95 shadow-[0_0_20px_-4px_rgba(52,211,153,0.45)]">
-                Order placed
+                {t("orderPlaced")}
               </span>
             ) : verifyingPayPal ? (
               <span className="rounded-full border border-sky-400/35 bg-sky-500/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-normal text-sky-100/95">
-                Verifying payment
+                {t("verifyingPaymentBadge")}
               </span>
             ) : null}
           </div>
@@ -623,28 +625,25 @@ export function ProductCheckoutConfirmPage({
             animate={{ opacity: 1, y: 0 }}
           >
             <p className="text-[15px] font-semibold text-rose-100">
-              {session.paymentMethod === "paypal" ? "Payment could not be verified" : "Could not confirm your order"}
+              {session.paymentMethod === "paypal" ? t("paymentVerifyFailed") : t("confirmFailed")}
             </p>
             <p className="mt-3 text-[13px] leading-relaxed text-rose-100/85">{orderError}</p>
             {session.paymentMethod === "paypal" ? (
-              <p className="mt-2 text-[12px] leading-relaxed text-rose-100/70">
-                If PayPal shows a charge, it may be pending — we only mark orders paid after server verification. No duplicate
-                charge will be created when you retry.
-              </p>
+              <p className="mt-2 text-[12px] leading-relaxed text-rose-100/70">{t("paypalVerifyNote")}</p>
             ) : null}
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
               <Link
                 href={paymentHref}
                 className="inline-flex min-h-[48px] items-center justify-center rounded-xl bg-white px-5 text-[14px] font-semibold text-slate-950"
               >
-                Back to payment
+                {t("backToPayment")}
               </Link>
               {orderErrorCode === "duplicate_payment" ? (
                 <Link
                   href="/track-order"
                   className="inline-flex min-h-[48px] items-center justify-center rounded-xl border border-white/25 bg-white/10 px-5 text-[14px] font-semibold text-white"
                 >
-                  Track your order
+                  {t("trackYourOrder")}
                 </Link>
               ) : null}
               <button
@@ -659,7 +658,7 @@ export function ProductCheckoutConfirmPage({
                 }}
                 className="inline-flex min-h-[48px] items-center justify-center rounded-xl border border-white/25 px-5 text-[14px] font-semibold text-white"
               >
-                Try again
+                {tCommon("tryAgain")}
               </button>
             </div>
           </motion.div>
@@ -708,7 +707,7 @@ export function ProductCheckoutConfirmPage({
                       variants={fadeUp}
                       transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
                     >
-                      Thank you
+                      {t("orderConfirmed")}
                     </motion.p>
                     <motion.h1
                       className="mt-3 bg-gradient-to-br from-white via-white to-white/75 bg-clip-text text-[1.9rem] font-semibold leading-[1.12] tracking-tight text-transparent sm:text-[2.45rem]"
@@ -719,23 +718,22 @@ export function ProductCheckoutConfirmPage({
                       variants={fadeUp}
                       transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
                     >
-                      {greet === "there" ? "You’re all set." : `You’re all set, ${greet}.`}
+                      {greet === "there" ? t("allSet") : `${t("allSet").replace(/\.$/, "")}, ${greet}.`}
                     </motion.h1>
                     <motion.p
                       className="mx-auto mt-5 max-w-md text-[15px] leading-relaxed text-white/75 sm:text-[1.06rem]"
                       variants={fadeUp}
                       transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
                     >
-                      Thank you for your order with {artistName}. You should receive your item in the next few days — we’ll
-                      keep you updated as soon as it ships.
+                      {t("thankYouEmail", { artist: artistName, email: session.buyerEmail })}
                     </motion.p>
                     <motion.p
                       className="mx-auto mt-4 max-w-md rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-[12px] leading-relaxed text-white/55"
                       variants={fadeUp}
                       transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
                     >
-                      {paymentStatusNote(session.paymentMethod, paymentStatus)} Save{" "}
-                      <span className="font-mono text-white/70">{orderRef}</span> for tracking.
+                      {paymentStatusNote(t, session.paymentMethod, paymentStatus)}{" "}
+                      <span className="font-mono text-white/70">{orderRef}</span>
                     </motion.p>
                   </motion.div>
 
@@ -746,7 +744,7 @@ export function ProductCheckoutConfirmPage({
                     transition={{ delay: 0.28, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                   >
                     <div className="absolute right-3 top-3 rounded-full bg-black/30 px-2 py-0.5 text-[10px] font-medium uppercase tracking-normal text-white/40">
-                      {productKind === "hoodie" ? "Hoodie" : "Tee"}
+                      {productKind === "hoodie" ? tProduct("hoodie") : tProduct("tshirt")}
                     </div>
                     <div className="relative h-[5.75rem] w-[4.5rem] shrink-0 overflow-hidden rounded-xl border border-white/15 bg-black/40 shadow-[0_12px_40px_-16px_rgba(0,0,0,0.8)] ring-1 ring-white/10">
                       {productImageSrc ? (
@@ -759,15 +757,17 @@ export function ProductCheckoutConfirmPage({
                           unoptimized
                         />
                       ) : (
-                        <div className="flex h-full items-center justify-center text-[10px] text-white/35">No image</div>
+                        <div className="flex h-full items-center justify-center text-[10px] text-white/35">{t("noImage")}</div>
                       )}
                     </div>
                     <div className="min-w-0 flex-1 pr-12">
                       <p className="line-clamp-2 text-[14px] font-semibold leading-snug text-white sm:text-[15px]">{displayTitle}</p>
                       <p className="mt-2 text-[12px] leading-relaxed text-white/48">{recapLine}</p>
-                      <p className="mt-1 text-[11px] text-white/40">Ship to · {checkoutCountryLabel(session.buyerCountry)}</p>
+                      <p className="mt-1 text-[11px] text-white/40">
+                        {t("recapShipTo")} · {checkoutCountryLabel(session.buyerCountry)}
+                      </p>
                       <p className="mt-2 text-[11px] leading-relaxed text-white/55">
-                        Payment · {formatCheckoutPaymentLine(session)}
+                        {t("payment")} · {formatCheckoutPaymentLine(session)}
                       </p>
                       <div className="mt-3 flex flex-wrap items-baseline gap-2">
                         <span className="text-[13px] font-semibold tabular-nums text-emerald-200/95">{priceLabel}</span>
@@ -793,29 +793,28 @@ export function ProductCheckoutConfirmPage({
                       className="group relative inline-flex min-h-[52px] flex-1 items-center justify-center overflow-hidden rounded-xl bg-white px-6 text-[15px] font-semibold text-slate-950 shadow-[0_14px_44px_-14px_rgba(255,255,255,0.45)] transition-[transform,box-shadow] hover:shadow-[0_18px_50px_-12px_rgba(255,255,255,0.55)] active:scale-[0.99] sm:flex-initial sm:min-w-[12.5rem]"
                     >
                       <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-                      <span className="relative">Track order</span>
+                      <span className="relative">{t("trackYourOrder")}</span>
                     </Link>
                     <Link
                       href="/"
                       className="inline-flex min-h-[52px] flex-1 items-center justify-center rounded-xl border border-white/25 bg-white/[0.06] px-6 text-[15px] font-semibold text-white/92 backdrop-blur-sm transition-[border-color,background-color] hover:border-white/40 hover:bg-white/[0.1] active:scale-[0.99] sm:flex-initial sm:min-w-[12.5rem]"
                     >
-                      Back home
+                      {t("backHome")}
                     </Link>
                     <Link
                       href={returnHref}
                       className="inline-flex min-h-[52px] flex-1 items-center justify-center rounded-xl border border-white/20 bg-transparent px-6 text-[14px] font-semibold text-white/75 hover:text-white sm:flex-initial"
                     >
-                      Back to product
+                      {bag ? t("backToBag") : t("backToProduct")}
                     </Link>
                   </motion.div>
 
                   <p className="relative z-[2] mt-7 text-center text-[11px] text-white/32">
-                    Need to change something?{" "}
                     <Link
                       href={detailsHref}
                       className="text-white/55 underline decoration-white/15 underline-offset-2 transition-colors hover:text-white/85"
                     >
-                      Edit contact details
+                      {t("editInformation")}
                     </Link>
                   </p>
                 </div>
@@ -823,7 +822,7 @@ export function ProductCheckoutConfirmPage({
             </motion.div>
           </div>
         ) : (
-          <p className="text-center text-[15px] text-white/50">Returning to checkout…</p>
+          <p className="text-center text-[15px] text-white/50">{t("returningToCheckout")}</p>
         )}
       </main>
     </div>

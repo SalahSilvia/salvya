@@ -104,9 +104,9 @@ export default function LoginPageClient() {
     if (auth === "error" && msg) {
       setBanner(formatSupabaseAuthError(decodeURIComponent(msg)));
     } else if (auth === "not_configured") {
-      setBanner("Supabase is not configured on the server. Add keys to salvya.local.env or .env.local.");
+      setBanner(t("supabaseServerNotConfigured"));
     } else if (auth === "missing_code") {
-      setBanner("Email link was incomplete. Request a new sign-in or confirmation email.");
+      setBanner(t("emailLinkIncomplete"));
     }
   }, [searchParams]);
 
@@ -129,7 +129,7 @@ export default function LoginPageClient() {
 
     if (!hasAfterSignupLoginHint()) return;
     setInfoBanner(
-      "Your account is ready. We sent a confirmation email if your project requires it. Sign in below with the password you chose.",
+      t("accountReadyBanner"),
     );
     try {
       const pre = prefill || sessionStorage.getItem(SALVYA_LOGIN_PREFILL_EMAIL_KEY);
@@ -146,12 +146,12 @@ export default function LoginPageClient() {
     const em = lastEmail.trim();
     if (!em) return;
     if (!isSupabaseConfigured()) {
-      setResendOk("Supabase is not configured.");
+      setResendOk(t("supabaseNotConfigured"));
       return;
     }
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
-      setResendOk("Could not start Supabase client.");
+      setResendOk(t("clientStartFailed"));
       return;
     }
     setResendBusy(true);
@@ -201,15 +201,13 @@ export default function LoginPageClient() {
       setBusy(true);
       await new Promise((r) => setTimeout(r, 400));
       setBusy(false);
-      setBanner(
-        "Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to salvya.local.env (see .env.example), restart dev, then try again.",
-      );
+      setBanner(t("supabaseEnvHint"));
       return;
     }
 
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
-      setBanner("Could not start Supabase client. Check your environment variables.");
+      setBanner(t("clientStartFailed"));
       return;
     }
 
@@ -232,9 +230,7 @@ export default function LoginPageClient() {
       const meta = (userData.user.user_metadata ?? {}) as Record<string, unknown>;
       if (isAccountDeactivated(meta) || userData.user.banned_until) {
         await supabase.auth.signOut();
-        setBanner(
-          "This account is deactivated. Contact Salvya support if you need access restored — we cannot sign you in until then.",
-        );
+        setBanner(t("accountDeactivated"));
         return;
       }
       if (!userData.user.email_confirmed_at) {
@@ -379,14 +375,14 @@ export default function LoginPageClient() {
                         autoComplete="current-password"
                         required
                         minLength={6}
-                        placeholder="Your password"
+                        placeholder={t("passwordPlaceholder")}
                         className={`${inputClass} pr-12`}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword((v) => !v)}
                         className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
-                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        aria-label={showPassword ? t("hidePassword") : t("showPassword")}
                       >
                         <EyeToggleIcon visible={showPassword} />
                       </button>
@@ -479,7 +475,7 @@ export default function LoginPageClient() {
                         disabled={resendBusy}
                         className="mt-2.5 inline-flex min-h-[40px] items-center justify-center rounded-lg bg-blue-600 px-4 text-[13px] font-semibold text-white transition-opacity hover:bg-blue-700 disabled:opacity-60"
                       >
-                        {resendBusy ? "Sending…" : "Resend confirmation email"}
+                        {resendBusy ? t("sending") : t("resendConfirmation")}
                       </button>
                       {resendOk ? <p className="mt-2 text-[12px] leading-relaxed text-blue-900">{resendOk}</p> : null}
                     </div>

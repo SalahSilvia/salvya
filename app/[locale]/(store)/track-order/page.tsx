@@ -2,11 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type { CustomerOrder, OrderFulfillmentStatus } from "@/lib/orders/types";
 import { carrierLabel } from "@/lib/admin/shipping-carriers";
-import { fulfillmentStatusHeadline } from "@/lib/orders/display";
+import { useOrderStatusLabels } from "@/lib/i18n/use-order-status-labels";
 import { trackOrderByEmail } from "@/lib/orders/fetch-orders-client";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { AuthScenery } from "@/components/auth/AuthScenery";
@@ -90,12 +91,6 @@ function IconLock({ className }: { className?: string }) {
   );
 }
 
-const journeySteps = [
-  { key: "ordered", label: "Ordered", desc: "Confirmed" },
-  { key: "prep", label: "Preparing", desc: "Fulfillment" },
-  { key: "ship", label: "Shipped", desc: "In transit" },
-  { key: "done", label: "Delivered", desc: "Complete" },
-] as const;
 
 function fulfillmentStepIndex(status: OrderFulfillmentStatus): number {
   if (status === "preparing") return 1;
@@ -105,8 +100,24 @@ function fulfillmentStepIndex(status: OrderFulfillmentStatus): number {
 }
 
 export default function TrackOrderPage() {
+  const t = useTranslations("trackOrder");
+  const tMenu = useTranslations("menu");
+  const tFooter = useTranslations("footer");
+  const tCommon = useTranslations("common");
+  const { headline: fulfillmentHeadline } = useOrderStatusLabels();
   const reduceMotion = useReducedMotion();
   const searchParams = useSearchParams();
+
+  const journeySteps = useMemo(
+    () =>
+      [
+        { key: "ordered", label: t("stepOrdered"), desc: t("stepOrderedDesc") },
+        { key: "prep", label: t("stepPreparing"), desc: t("stepPreparingDesc") },
+        { key: "ship", label: t("stepShipped"), desc: t("stepShippedDesc") },
+        { key: "done", label: t("stepDelivered"), desc: t("stepDeliveredDesc") },
+      ] as const,
+    [t],
+  );
   const orderId = useId();
   const emailId = useId();
   const [busy, setBusy] = useState(false);
@@ -142,11 +153,11 @@ export default function TrackOrderPage() {
     const order = String(fd.get("orderId") ?? "").trim();
     const email = String(fd.get("email") ?? "").trim();
     if (!order) {
-      setError("Enter your order number.");
+      setError(t("errors.orderNumber"));
       return;
     }
     if (!email || !email.includes("@")) {
-      setError("Enter the email address used at checkout.");
+      setError(t("errors.email"));
       return;
     }
     setBusy(true);
@@ -156,7 +167,7 @@ export default function TrackOrderPage() {
 
   return (
     <AuthScenery>
-      <AuthTopBar backHref="/" backLabel="Home" pill="Tracking" />
+      <AuthTopBar backHref="/" backLabel={t("backHome")} pill={t("trackingPill")} />
 
       <main className="flex min-h-dvh flex-col items-center justify-center px-[max(1rem,env(safe-area-inset-left))] pb-[max(2.5rem,env(safe-area-inset-bottom))] pr-[max(1rem,env(safe-area-inset-right))] pt-[calc(4.5rem+env(safe-area-inset-top))]">
         <motion.div
@@ -181,23 +192,19 @@ export default function TrackOrderPage() {
                 <IconTruckHero className="h-8 w-8" />
               </div>
 
-              <p className="mt-6 text-[10px] font-bold uppercase tracking-[0.32em] text-zinc-500">Order status</p>
+              <p className="mt-6 text-[10px] font-bold uppercase tracking-[0.32em] text-zinc-500">{t("orderStatus")}</p>
               <h1 className="mt-2 max-w-[20rem] text-balance text-[1.9rem] font-semibold leading-[1.08] tracking-[-0.05em] text-white sm:text-[2.15rem]">
-                Track your{" "}
-                <span className="bg-gradient-to-r from-[#9eb6ff] via-white to-cyan-200 bg-clip-text text-transparent">
-                  shipment
-                </span>
+                {t("title")}
               </h1>
               <p className="mt-3 max-w-[24rem] text-[14px] leading-relaxed text-zinc-400 sm:text-[15px]">
-                Look up real Salvya orders with your SVY number and checkout email. Status reflects our warehouse — live
-                carrier scans come when shipping partners are connected.
+                {t("descriptionLong")}
               </p>
             </div>
 
             {/* Journey preview */}
             <div className="mt-9 rounded-2xl border border-white/[0.06] bg-black/25 px-4 py-5 sm:px-5">
               <p className="mb-4 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
-                {tracked ? "Your order" : "Typical journey"}
+                {tracked ? t("journeyYours") : t("journeyTypical")}
               </p>
               <div className="relative flex justify-between gap-1">
                 <div
@@ -229,7 +236,7 @@ export default function TrackOrderPage() {
             <form onSubmit={onSubmit} className="mt-9 space-y-5" noValidate>
               <div>
                 <label htmlFor={orderId} className="text-[12px] font-semibold text-zinc-400">
-                  Order number <span className="text-rose-400/90">*</span>
+                  {t("orderNumber")} <span className="text-rose-400/90">*</span>
                 </label>
                 <div className={inputWrap}>
                   <span className="pointer-events-none absolute left-4 top-1/2 z-[1] -translate-y-1/2 text-zinc-500">
@@ -240,7 +247,7 @@ export default function TrackOrderPage() {
                     name="orderId"
                     type="text"
                     autoComplete="off"
-                    placeholder="SVY-482910"
+                    placeholder={t("orderPlaceholder")}
                     defaultValue={defaultOrder}
                     className={inputClass}
                   />
@@ -249,7 +256,7 @@ export default function TrackOrderPage() {
 
               <div>
                 <label htmlFor={emailId} className="text-[12px] font-semibold text-zinc-400">
-                  Email on the order <span className="text-rose-400/90">*</span>
+                  {t("email")} <span className="text-rose-400/90">*</span>
                 </label>
                 <div className={inputWrap}>
                   <span className="pointer-events-none absolute left-4 top-1/2 z-[1] -translate-y-1/2 text-zinc-500">
@@ -261,7 +268,7 @@ export default function TrackOrderPage() {
                     type="email"
                     autoComplete="email"
                     inputMode="email"
-                    placeholder="you@email.com"
+                    placeholder={t("emailPlaceholder")}
                     defaultValue={defaultEmail}
                     className={inputClass}
                   />
@@ -291,13 +298,15 @@ export default function TrackOrderPage() {
                     className="rounded-2xl border border-emerald-400/28 bg-gradient-to-br from-emerald-500/12 to-emerald-950/40 px-4 py-4"
                   >
                     <p className="font-mono text-[12px] font-semibold text-emerald-100/95">{tracked.orderNumber}</p>
-                    <p className="mt-2 text-[13px] font-semibold text-white">{fulfillmentStatusHeadline(tracked.fulfillmentStatus)}</p>
+                    <p className="mt-2 text-[13px] font-semibold text-white">{fulfillmentHeadline(tracked.fulfillmentStatus)}</p>
                     <p className="mt-2 text-[13px] leading-relaxed text-emerald-50/90">
                       {tracked.lineItem.qty}× {tracked.lineItem.displayTitle} · {tracked.lineItem.colorLabel} ·{" "}
                       {tracked.lineItem.size}
                     </p>
                     <p className="mt-1 text-[12px] text-emerald-100/70">
-                      Placed {new Date(tracked.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" })}
+                      {t("placed", {
+                        date: new Date(tracked.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" }),
+                      })}
                     </p>
                     {tracked.shipping.trackingNumber ? (
                       <div className="mt-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2.5">
@@ -313,7 +322,7 @@ export default function TrackOrderPage() {
                             rel="noopener noreferrer"
                             className="mt-2 inline-flex text-[12px] font-semibold text-[#9eb4ff] hover:underline"
                           >
-                            Open carrier tracking
+                            {t("carrierTracking")}
                           </a>
                         ) : null}
                       </div>
@@ -331,7 +340,7 @@ export default function TrackOrderPage() {
                 <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-transparent to-white/12" aria-hidden />
                 <span className="relative flex items-center gap-2.5">
                   {busy && !reduceMotion ? <SubmitSpinner /> : null}
-                  {busy ? "Looking up order…" : "Track order"}
+                  {busy ? t("submitting") : t("submit")}
                 </span>
               </motion.button>
             </form>
@@ -339,64 +348,69 @@ export default function TrackOrderPage() {
             <div className="mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-white/[0.06] pt-6 text-[12px] text-zinc-500">
               <span className="inline-flex items-center gap-2">
                 <IconLock className="text-emerald-400/80" />
-                Secure lookup · order number + email
+                {t("secureLookup")}
               </span>
             </div>
 
             <p className="mt-6 text-center text-[12px] leading-relaxed text-zinc-500">
-              Can&apos;t find your number? Search your inbox for{" "}
-              <span className="font-medium text-zinc-400">Salvya order confirmation</span> or{" "}
-              <Link href={loginHref("/track-order")} prefetch={false} className="font-semibold text-indigo-300/95 hover:text-indigo-200">
-                sign in
-              </Link>{" "}
-              to see orders linked to your profile.
+              {t.rich("helpInbox", {
+                signIn: (chunks) => (
+                  <Link
+                    href={loginHref("/track-order")}
+                    prefetch={false}
+                    className="font-semibold text-indigo-300/95 hover:text-indigo-200"
+                  >
+                    {chunks}
+                  </Link>
+                ),
+              })}
             </p>
 
             <div className="mt-5 flex flex-wrap items-center justify-center gap-4 text-[12px] font-semibold">
               <Link href="/about" prefetch={false} className="text-zinc-500 transition-colors hover:text-zinc-300">
-                About
+                {tMenu("ourStory")}
               </Link>
               <span className="text-zinc-700" aria-hidden>
                 ·
               </span>
               <Link href="/terms" prefetch={false} className="text-zinc-500 transition-colors hover:text-zinc-300">
-                Terms
+                {tMenu("terms")}
               </Link>
               <span className="text-zinc-700" aria-hidden>
                 ·
               </span>
               <Link href="/shipping" prefetch={false} className="text-zinc-500 transition-colors hover:text-zinc-300">
-                Shipping
+                {tFooter("shipping")}
               </Link>
               <span className="text-zinc-700" aria-hidden>
                 ·
               </span>
               <Link href="/size-guide" prefetch={false} className="text-zinc-500 transition-colors hover:text-zinc-300">
-                Size guide
+                {tFooter("sizeGuide")}
               </Link>
               <span className="text-zinc-700" aria-hidden>
                 ·
               </span>
               <Link href="/payment" prefetch={false} className="text-zinc-500 transition-colors hover:text-zinc-300">
-                Payment
+                {tMenu("payment")}
               </Link>
               <span className="text-zinc-700" aria-hidden>
                 ·
               </span>
               <Link href="/returns" prefetch={false} className="text-zinc-500 transition-colors hover:text-zinc-300">
-                Returns
+                {tFooter("returns")}
               </Link>
               <span className="text-zinc-700" aria-hidden>
                 ·
               </span>
               <Link href="/cookies" prefetch={false} className="text-zinc-500 transition-colors hover:text-zinc-300">
-                Cookies
+                {tMenu("cookies")}
               </Link>
               <span className="text-zinc-700" aria-hidden>
                 ·
               </span>
               <Link href="/cookies/settings" prefetch={false} className="text-zinc-500 transition-colors hover:text-zinc-300">
-                Cookie settings
+                {tMenu("cookieSettings")}
               </Link>
               <span className="text-zinc-700" aria-hidden>
                 ·
@@ -408,7 +422,7 @@ export default function TrackOrderPage() {
                 ·
               </span>
               <Link href="/account/profile" prefetch={false} className="text-zinc-500 transition-colors hover:text-zinc-300">
-                Your account
+                {t("signInLink")}
               </Link>
             </div>
           </div>

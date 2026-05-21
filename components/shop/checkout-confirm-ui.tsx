@@ -12,6 +12,8 @@ import type { OrderPaymentStatus } from "@/lib/orders/types";
 import { SalvyaErrorPage } from "@/components/errors/SalvyaErrorPage";
 import { CheckoutLoadingPanel } from "@/components/shop/CheckoutLoadingPanel";
 import { CheckoutStepGraphic, TrustStrip } from "@/components/shop/product-checkout-shared";
+import { useTranslations } from "next-intl";
+import { useCheckoutLabels } from "@/lib/i18n/use-checkout-labels";
 
 const serif = "ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif";
 
@@ -29,6 +31,8 @@ export function CheckoutConfirmShell({
   bag?: boolean;
   children: ReactNode;
 }) {
+  const { t } = useCheckoutLabels();
+
   return (
     <motion.div className="relative min-h-dvh w-full overflow-x-hidden bg-[#f4f6fb] text-slate-900">
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
@@ -53,14 +57,14 @@ export function CheckoutConfirmShell({
                 <span aria-hidden className="text-[15px] leading-none text-slate-500">
                   ←
                 </span>
-                {bag ? "Back to bag" : "Back to product"}
+                {bag ? t("backToBag") : t("backToProduct")}
               </Link>
               <span className="hidden rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-semibold text-emerald-800 sm:inline-flex">
-                Step 3 · Confirmation
+                {t("step3Confirmation")}
               </span>
             </motion.div>
             <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-normal text-slate-500 sm:hidden">
-              Done
+              {t("stepDoneShort")}
             </span>
           </motion.div>
           <CheckoutStepGraphic activeStep={3} />
@@ -117,6 +121,7 @@ function ThankYouCheckmark({ reduceMotion }: { reduceMotion: boolean | null }) {
 }
 
 function CopyOrderButton({ orderRef }: { orderRef: string }) {
+  const { tCommon } = useCheckoutLabels();
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -134,7 +139,7 @@ function CopyOrderButton({ orderRef }: { orderRef: string }) {
           <span className="text-emerald-600" aria-hidden>
             ✓
           </span>
-          Copied
+          {tCommon("copied")}
         </>
       ) : (
         <>
@@ -142,7 +147,7 @@ function CopyOrderButton({ orderRef }: { orderRef: string }) {
             <rect x="9" y="9" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.6" />
             <path d="M6 15H5a2 2 0 01-2-2V5a2 2 0 012-2h8a2 2 0 012 2v1" stroke="currentColor" strokeWidth="1.6" />
           </svg>
-          Copy
+          {tCommon("copy")}
         </>
       )}
     </button>
@@ -150,14 +155,15 @@ function CopyOrderButton({ orderRef }: { orderRef: string }) {
 }
 
 function DeliveryTimeline({ reduceMotion }: { reduceMotion: boolean | null }) {
+  const { t } = useCheckoutLabels();
   const steps = [
-    { label: "Confirmed", sub: "Order received", done: true },
-    { label: "Preparing", sub: "Packing your items", done: false },
-    { label: "Shipped", sub: "On the way to you", done: false },
+    { label: t("timelineConfirmed"), sub: t("timelineConfirmed"), done: true },
+    { label: t("timelinePreparing"), sub: t("timelinePreparing"), done: false },
+    { label: t("timelineShipped"), sub: t("timelineShipped"), done: false },
   ];
   return (
     <div className="mt-8 border-t border-slate-100 pt-6">
-      <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">What happens next</p>
+      <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{t("timelineWhatNext")}</p>
       <div className="relative flex justify-between gap-2">
         <div className="absolute left-[16%] right-[16%] top-4 h-px bg-slate-200" aria-hidden />
         {steps.map((s, i) => (
@@ -185,16 +191,13 @@ function DeliveryTimeline({ reduceMotion }: { reduceMotion: boolean | null }) {
 }
 
 export function CheckoutConfirmLoading({ verifyingPayPal }: { verifyingPayPal?: boolean }) {
+  const { t } = useCheckoutLabels();
   return (
     <CheckoutLoadingPanel
       verifying={verifyingPayPal}
-      kicker={verifyingPayPal ? "Securing payment" : "Placing order"}
-      title={verifyingPayPal ? "Verifying PayPal with Salvya…" : "Almost there…"}
-      description={
-        verifyingPayPal
-          ? "We confirm amount and capture with PayPal before marking your order paid."
-          : "Saving your order and sending confirmation to your email."
-      }
+      kicker={verifyingPayPal ? t("securingPayment") : t("placingOrder")}
+      title={verifyingPayPal ? t("verifyingPayPal") : t("almostThere")}
+      description={verifyingPayPal ? t("paypalVerifyNote") : t("placingOrder")}
     />
   );
 }
@@ -212,17 +215,15 @@ export function CheckoutConfirmError({
   paymentHref: string;
   onRetry: () => void;
 }) {
-  const paypalHint =
-    session.paymentMethod === "paypal"
-      ? "If PayPal shows a pending charge, we only mark orders paid after server verification. Retrying will not double-charge you."
-      : undefined;
+  const { t, tCommon } = useCheckoutLabels();
+  const paypalHint = session.paymentMethod === "paypal" ? t("paypalVerifyNote") : undefined;
 
   return (
     <SalvyaErrorPage
       embedded
       variant="checkout"
-      code={session.paymentMethod === "paypal" ? "PayPal" : "Order"}
-      title={session.paymentMethod === "paypal" ? "Payment could not be verified" : "Could not confirm your order"}
+      code={session.paymentMethod === "paypal" ? "PayPal" : tCommon("brand")}
+      title={session.paymentMethod === "paypal" ? t("paymentVerifyFailed") : t("confirmFailed")}
       description={orderError}
       hint={paypalHint}
       onRetry={onRetry}
@@ -232,14 +233,14 @@ export function CheckoutConfirmError({
             href={paymentHref}
             className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-white/[0.14] bg-white/[0.08] px-5 text-[13px] font-semibold text-white/90 hover:bg-white/[0.12]"
           >
-            Back to payment
+            {t("backToPayment")}
           </Link>
           {orderErrorCode === "duplicate_payment" ? (
             <Link
               href="/track-order"
               className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-white/[0.1] px-5 text-[13px] font-semibold text-white/70 hover:text-white"
             >
-              Track your order
+              {t("trackYourOrder")}
             </Link>
           ) : null}
         </>
@@ -281,6 +282,9 @@ export function CheckoutConfirmSuccess({
   detailsHref: string;
   bag?: boolean;
 }) {
+  const { t, tProduct } = useCheckoutLabels();
+  const tTrack = useTranslations("trackOrder");
+
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start xl:grid-cols-[minmax(0,1fr)_21rem]">
       <motion.div
@@ -303,7 +307,7 @@ export function CheckoutConfirmSuccess({
               variants={fadeUp}
               transition={{ duration: 0.4 }}
             >
-              Order confirmed
+              {t("orderConfirmed")}
             </motion.p>
             <motion.h1
               className="mt-2 text-[1.75rem] font-semibold leading-[1.15] tracking-tight text-slate-900 sm:text-[2.15rem]"
@@ -311,11 +315,10 @@ export function CheckoutConfirmSuccess({
               variants={fadeUp}
               transition={{ duration: 0.4 }}
             >
-              {greet === "there" ? "You’re all set." : `You’re all set, ${greet}.`}
+              {greet === "there" ? t("allSet") : `${t("allSet").replace(/\.$/, "")}, ${greet}.`}
             </motion.h1>
             <motion.p className="mx-auto mt-4 max-w-md text-[14px] leading-relaxed text-slate-600 sm:text-[15px]" variants={fadeUp}>
-              Thank you for ordering from <span className="font-medium text-slate-900">{artistName}</span>. We’ll email updates to{" "}
-              <span className="font-medium text-slate-900">{session.buyerEmail}</span> when your order ships.
+              {t("thankYouEmail", { artist: artistName, email: session.buyerEmail })}
             </motion.p>
           </motion.div>
         </div>
@@ -333,20 +336,20 @@ export function CheckoutConfirmSuccess({
               href={trackHref}
               className="inline-flex min-h-[52px] flex-1 items-center justify-center rounded-xl bg-gradient-to-r from-[#2D6BFF] to-[#2557d6] text-[15px] font-semibold text-white shadow-[0_10px_32px_-10px_rgba(45,107,255,0.55)] transition-transform hover:brightness-105 active:scale-[0.99] sm:flex-[1.2]"
             >
-              Track order
+              {t("trackYourOrder")}
             </Link>
             <Link
               href="/"
               className="inline-flex min-h-[52px] flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white text-[15px] font-semibold text-slate-800 shadow-sm hover:bg-slate-50 active:scale-[0.99]"
             >
-              Back home
+              {t("backHome")}
             </Link>
           </motion.div>
 
           <p className="mt-6 text-center text-[12px] text-slate-500">
-            Need to change contact details?{" "}
+            {t("editShipping")}{" "}
             <Link href={detailsHref} className="font-medium text-[#2D6BFF] underline decoration-[#2D6BFF]/25 underline-offset-2">
-              Edit shipping info
+              {t("editInformation")}
             </Link>
           </p>
         </div>
@@ -361,7 +364,7 @@ export function CheckoutConfirmSuccess({
       >
         <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.06),0_16px_48px_-24px_rgba(15,23,42,0.14)]">
           <motion.div className="border-b border-slate-100 bg-slate-50/90 px-4 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">Receipt</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">{t("receiptTitle")}</p>
           </motion.div>
           <div className="p-4 sm:p-5">
             <div className="flex gap-3">
@@ -369,12 +372,12 @@ export function CheckoutConfirmSuccess({
                 {productImageSrc ? (
                   <Image src={productImageSrc} alt={displayTitle} fill className="object-cover object-center" sizes="64px" unoptimized />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-[10px] text-slate-400">No image</div>
+                  <div className="flex h-full items-center justify-center text-[10px] text-slate-400">{t("noImage")}</div>
                 )}
               </div>
               <div className="min-w-0 flex-1">
                 <span className="inline-flex rounded-full bg-slate-900 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
-                  {productKind === "hoodie" ? "Hoodie" : "Tee"}
+                  {productKind === "hoodie" ? tProduct("hoodie") : tProduct("tshirt")}
                 </span>
                 <p className="mt-1.5 line-clamp-2 text-[14px] font-semibold leading-snug text-slate-900">{displayTitle}</p>
                 <p className="mt-1 text-[12px] leading-relaxed text-slate-500">{recapLine}</p>
@@ -383,21 +386,21 @@ export function CheckoutConfirmSuccess({
 
             <dl className="mt-5 space-y-2.5 border-t border-slate-100 pt-4 text-[12px]">
               <motion.div className="flex justify-between gap-3">
-                <dt className="text-slate-500">Ship to</dt>
+                <dt className="text-slate-500">{t("recapShipTo")}</dt>
                 <dd className="text-right font-medium text-slate-900">{checkoutCountryLabel(session.buyerCountry)}</dd>
               </motion.div>
               <motion.div className="flex justify-between gap-3">
-                <dt className="text-slate-500">Payment</dt>
+                <dt className="text-slate-500">{t("payment")}</dt>
                 <dd className="text-right font-medium text-slate-900">{formatCheckoutPaymentLine(session)}</dd>
               </motion.div>
               <motion.div className="flex justify-between gap-3 border-t border-dashed border-slate-100 pt-2.5">
-                <dt className="font-medium text-slate-700">Total</dt>
+                <dt className="font-medium text-slate-700">{t("total")}</dt>
                 <dd className="font-semibold tabular-nums text-slate-900">{priceLabel}</dd>
               </motion.div>
             </dl>
 
             <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50/80 p-3.5">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">Order reference</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">{tTrack("orderNumber")}</p>
               <motion.div className="mt-2 flex items-center justify-between gap-2">
                 <span className="font-mono text-[13px] font-semibold text-slate-900">{orderRef}</span>
                 <CopyOrderButton orderRef={orderRef} />
@@ -409,7 +412,7 @@ export function CheckoutConfirmSuccess({
               href={returnHref}
               className="mt-4 flex min-h-[44px] w-full items-center justify-center rounded-xl border border-slate-200 text-[13px] font-semibold text-slate-700 transition-colors hover:bg-slate-50"
             >
-              {bag ? "Continue shopping" : "View product again"}
+              {bag ? t("continueShopping") : t("viewProductAgain")}
             </Link>
           </div>
         </div>

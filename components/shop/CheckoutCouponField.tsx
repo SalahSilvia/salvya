@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   applyCouponToSubtotal,
   formatDiscountLine,
@@ -29,6 +30,7 @@ export function CheckoutCouponField({
   applied,
   onApplied,
 }: Props) {
+  const t = useTranslations("checkout");
   const [input, setInput] = useState(applied?.ok ? applied.code : "");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -59,14 +61,14 @@ export function CheckoutCouponField({
 
   return (
     <div className="rounded-xl border border-slate-200/90 bg-slate-50/80 p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-normal text-slate-500">Promo code</p>
+      <p className="text-[10px] font-semibold uppercase tracking-normal text-slate-500">{t("coupon")}</p>
       {applied?.ok ? (
         <div className="mt-2 flex items-center justify-between gap-2">
           <span className="text-[13px] font-semibold text-emerald-700">
             {applied.code} · {applied.label} ({formatDiscountLine(applied.discountCents, priceLabel)})
           </span>
           <button type="button" onClick={remove} className="text-[12px] font-medium text-slate-500 hover:text-slate-800">
-            Remove
+            {t("couponRemove")}
           </button>
         </div>
       ) : (
@@ -75,7 +77,7 @@ export function CheckoutCouponField({
             <input
               value={input}
               onChange={(e) => setInput(normalizeCouponCode(e.target.value))}
-              placeholder="e.g. SALVYA10"
+              placeholder={t("couponPlaceholder")}
               className="min-h-[40px] flex-1 rounded-lg border border-slate-200 bg-white px-3 text-[13px] uppercase text-slate-900 placeholder:normal-case placeholder:text-slate-400 focus:border-[#2D6BFF] focus:outline-none focus:ring-2 focus:ring-[#2D6BFF]/20"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -94,7 +96,7 @@ export function CheckoutCouponField({
             </button>
           </div>
           {error ? <p className="mt-2 text-[12px] text-rose-600">{error}</p> : null}
-          <p className="mt-2 text-[11px] text-slate-500">Try SALVYA10 or WELCOME5</p>
+          <p className="mt-2 text-[11px] text-slate-500">{t("couponHints")}</p>
         </>
       )}
     </div>

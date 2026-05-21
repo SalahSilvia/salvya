@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { ProductCheckoutPaymentPage } from "@/components/shop/ProductCheckoutPaymentPage";
 import { BagCheckoutError, BagCheckoutLoading } from "@/components/shop/bag-checkout/BagCheckoutLoading";
 import { useBagCheckoutQuote } from "@/components/shop/bag-checkout/useBagCheckoutQuote";
@@ -7,11 +8,12 @@ import { productCheckoutPropsFromBag } from "@/lib/cart/bag-checkout-props";
 import { computePayPalCheckoutTotal } from "@/lib/paypal/checkout-amount";
 
 export function BagCheckoutPaymentPage() {
+  const t = useTranslations("checkout");
   const { loading, error, quote, primaryLineItem } = useBagCheckoutQuote();
 
   if (loading) return <BagCheckoutLoading />;
   if (error || !quote || !primaryLineItem) {
-    return <BagCheckoutError message={error ?? "Your bag is empty or could not be loaded."} />;
+    return <BagCheckoutError message={error ?? t("bagEmptyError")} />;
   }
 
   const props = productCheckoutPropsFromBag(quote, primaryLineItem);

@@ -1,10 +1,13 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 export function CheckoutStepGraphic({ activeStep }: { activeStep: 1 | 2 | 3 }) {
+  const t = useTranslations("checkout");
   const steps = [
-    { n: 1, label: "Information", short: "Info" },
-    { n: 2, label: "Payment", short: "Pay" },
-    { n: 3, label: "Confirmation", short: "Done" },
+    { n: 1, label: t("stepInfo"), short: t("stepInfoShort") },
+    { n: 2, label: t("payment"), short: t("stepPayShort") },
+    { n: 3, label: t("confirm"), short: t("stepDoneShort") },
   ] as const;
 
   return (

@@ -17,13 +17,16 @@ import {
   PackageThumb,
   PaymentBadge,
 } from "@/components/orders/orders-ui";
-import { fulfillmentStatusHeadline, orderListLabel } from "@/lib/orders/display";
+import { orderListLabel } from "@/lib/orders/display";
+import { useOrderStatusLabels } from "@/lib/i18n/use-order-status-labels";
+import { useTranslations } from "next-intl";
 import { formatOrderTotal } from "@/lib/orders/customer-order-actions";
 import { fetchAccountOrders, type AccountOrderListItem } from "@/lib/orders/fetch-account-orders-client";
 import { formatNotificationWhen } from "@/lib/notifications/format-time";
 type Tab = "active" | "history";
 
 function OrderCard({ item }: { item: AccountOrderListItem }) {
+  const { headline } = useOrderStatusLabels();
   const { order, actions, eligibility } = item;
   const active = actions.isActive;
   const reduceMotion = useReducedMotion();
@@ -73,7 +76,7 @@ function OrderCard({ item }: { item: AccountOrderListItem }) {
             </p>
 
             <p className={`mt-1.5 text-[11px] ${active ? "text-slate-400" : "text-white/32"}`}>
-              {fulfillmentStatusHeadline(order.fulfillmentStatus)} · {formatNotificationWhen(order.createdAt)}
+              {headline(order.fulfillmentStatus)} · {formatNotificationWhen(order.createdAt)}
             </p>
 
             {active ? <OrderJourneyBar status={order.fulfillmentStatus} variant="light" /> : null}
@@ -103,6 +106,7 @@ function OrderCard({ item }: { item: AccountOrderListItem }) {
 }
 
 export function MyOrdersPage() {
+  const t = useTranslations("orders");
   const [items, setItems] = useState<AccountOrderListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -132,16 +136,16 @@ export function MyOrdersPage() {
     <OrdersPageShell>
       <OrdersStickyHeader>
         <OrdersHero
-          kicker="Your purchases"
-          title="My orders"
-          subtitle="Invoice, tracking, and cancellation — all in one place."
+          kicker={t("kicker")}
+          title={t("title")}
+          subtitle={t("subtitle")}
         />
         <OrdersSegmentedControl
           value={tab}
           onChange={setTab}
           options={[
-            { id: "active", label: "In progress", count: activeItems.length },
-            { id: "history", label: "History", count: historyItems.length },
+            { id: "active", label: t("tabActive"), count: activeItems.length },
+            { id: "history", label: t("tabHistory"), count: historyItems.length },
           ]}
         />
       </OrdersStickyHeader>
@@ -152,14 +156,10 @@ export function MyOrdersPage() {
 
         {!loading && !error && filtered.length === 0 ? (
           <OrdersEmpty
-            title={tab === "active" ? "No orders in progress" : "No order history yet"}
-            description={
-              tab === "active"
-                ? "When you checkout while signed in, live orders show here with tracking and your invoice."
-                : "Completed and cancelled orders will appear here."
-            }
+            title={tab === "active" ? t("emptyActive") : t("emptyHistory")}
+            description={tab === "active" ? t("emptyActiveDesc") : t("emptyHistoryDesc")}
             actionHref={tab === "active" ? "/shop" : undefined}
-            actionLabel={tab === "active" ? "Start shopping" : undefined}
+            actionLabel={tab === "active" ? t("startShopping") : undefined}
           />
         ) : null}
 

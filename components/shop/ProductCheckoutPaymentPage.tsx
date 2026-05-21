@@ -8,7 +8,6 @@ import { usePathname, useRouter } from "next/navigation";
 import type { ProductCheckoutPageProps } from "@/components/shop/ProductCheckoutPage";
 import { CheckoutPaymentTrustStrip } from "@/components/shop/CheckoutPaymentTrustStrip";
 import { PayPalHostedButtons } from "@/components/shop/PayPalHostedButtons";
-import { BagCheckoutOrderSummary } from "@/components/shop/BagCheckoutOrderSummary";
 import { ProductCheckoutOrderSummary } from "@/components/shop/ProductCheckoutOrderSummary";
 import { CardBrandRow, CheckoutStepGraphic, PayPalMarkImg, TrustStrip } from "@/components/shop/product-checkout-shared";
 import { IconCreditCard } from "@/components/shop/product-dock-icons";
@@ -31,13 +30,9 @@ import { parsePriceLabelToNumber } from "@/lib/admin/parse-price";
 import { getAnalyticsTracker } from "@/lib/analytics/tracker";
 import { makeProductId } from "@/lib/member/likes-storage";
 import { checkoutSessionExpiryMessage, isCheckoutSessionExpired } from "@/lib/checkout/session-guard";
-import { parseProductCheckoutPath } from "@/lib/checkout/parse-checkout-path";
-import { reserveCheckoutStock, reserveCheckoutStockBag } from "@/lib/checkout/reserve-stock-client";
+import { reserveCheckoutStock } from "@/lib/checkout/reserve-stock-client";
 import { computePayPalCheckoutTotal } from "@/lib/paypal/checkout-amount";
-import { paymentErrorMessage } from "@/lib/orders/payment-user-message";
-
-const CHECKOUT_NEXT_STEP_PAGE = "Confirmation";
-const CHECKOUT_PAYMENT_PRIMARY_CTA = "Continue to confirmation";
+import { useCheckoutLabels } from "@/lib/i18n/use-checkout-labels";
 
 type PaySelection = "cod" | "paypal_wallet" | "paypal_card";
 
@@ -102,8 +97,8 @@ export function ProductCheckoutPaymentPage({
   priceCents,
   serverPayPalAmount,
   variantId,
-  bag,
 }: ProductCheckoutPageProps) {
+  const { t, tCommon } = useCheckoutLabels();
   const pathname = usePathname();
   const router = useRouter();
   const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "";
@@ -120,15 +115,21 @@ export function ProductCheckoutPaymentPage({
 
   const confirmHref = useMemo(() => (detailsPath ? `${detailsPath}/confirm${qs}` : "#"), [detailsPath, qs]);
 
-  const checkoutMeta = useMemo(() => parseProductCheckoutPath(pathname), [pathname]);
+  const checkoutMeta = useMemo(() => {
+    const m = pathname?.match(/^\/artist\/([^/]+)\/(item|tshirt)\/([^/]+)\/checkout/);
+    if (!m) return null;
+    return {
+      artistSlug: m[1]!,
+      itemSlug: m[3]!,
+      productKind: m[2] === "tshirt" ? ("tshirt" as const) : ("hoodie" as const),
+    };
+  }, [pathname]);
 
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<CheckoutDetailsSessionV1 | null>(null);
   const [paySelection, setPaySelection] = useState<PaySelection>("paypal_wallet");
   const [coupon, setCoupon] = useState<CouponResult | null>(null);
   const [stockReserveError, setStockReserveError] = useState<string | null>(null);
-  /** Catalog stock can read 0 while this session holds a unit — reserve-stock is authoritative on payment. */
-  const [stockHold, setStockHold] = useState<"pending" | "held" | "unavailable">(bag ? "held" : "pending");
 
   const recapColorId = useMemo(() => {
     const raw = new URLSearchParams(previewQueryString).get("color") ?? "ink";
@@ -144,8 +145,6 @@ export function ProductCheckoutPaymentPage({
   const selectPayment = useCallback(
     (selection: PaySelection) => {
       setPaySelection(selection);
-      setPaypalUiError(null);
-      setPaymentHint(null);
       if (!checkoutMeta || !pathname) return;
       const contentId = makeProductId(
         checkoutMeta.artistSlug,
@@ -168,17 +167,13 @@ export function ProductCheckoutPaymentPage({
     );
   }, [checkoutMeta]);
 
-  const effectivePriceLabel = bag?.subtotalLabel ?? priceLabel;
-  const effectiveQty = bag?.primaryLineItem.qty ?? recapQty;
-
   const appliedDiscountCents = coupon?.ok ? coupon.discountCents : 0;
   const fallbackPayPal = useMemo(
     () =>
-      computePayPalCheckoutTotal(effectivePriceLabel, effectiveQty, appliedDiscountCents, {
+      computePayPalCheckoutTotal(priceLabel, recapQty, appliedDiscountCents, {
         ...(priceCents !== undefined ? { priceCents } : {}),
-        ...(bag ? { priceCents: bag.subtotalCents } : {}),
       }),
-    [bag, effectivePriceLabel, effectiveQty, appliedDiscountCents, priceCents],
+    [priceLabel, recapQty, appliedDiscountCents, priceCents],
   );
   const [paypalCharge, setPaypalCharge] = useState(
     serverPayPalAmount ?? fallbackPayPal,
@@ -195,34 +190,31 @@ export function ProductCheckoutPaymentPage({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        priceLabel: effectivePriceLabel,
-        qty: effectiveQty,
+        priceLabel,
+        qty: recapQty,
         discountCents: appliedDiscountCents,
         couponCode: coupon?.ok ? coupon.code : undefined,
         referenceId: detailsPath ? readCheckoutDetailsSession(detailsPath)?.placementKey : undefined,
-        ...(bag?.primaryLineItem.bagLines?.length
-          ? { bagLines: bag.primaryLineItem.bagLines }
-          : checkoutMeta
-            ? {
-                artistSlug: checkoutMeta.artistSlug,
-                itemSlug: checkoutMeta.itemSlug,
-                productKind: checkoutMeta.productKind,
-                variantId,
-                size: recapSize,
-                colorId: recapColorId,
-                colorLabel: recapColorLabel,
-              }
-            : {}),
+        ...(checkoutMeta
+          ? {
+              artistSlug: checkoutMeta.artistSlug,
+              itemSlug: checkoutMeta.itemSlug,
+              productKind: checkoutMeta.productKind,
+              variantId,
+              size: recapSize,
+              colorId: recapColorId,
+              colorLabel: recapColorLabel,
+            }
+          : {}),
       }),
     });
     const data = (await res.json()) as {
       orderId?: string;
       amount?: { currency_code: string; value: string };
       error?: string;
-      code?: string;
     };
     if (!res.ok || !data.orderId) {
-      throw new Error(paymentErrorMessage(data.error ?? "Could not start PayPal checkout", data.code));
+      throw new Error(data.error ?? t("paymentVerifyFailed"));
     }
     if (data.amount?.currency_code && data.amount.value) {
       setPaypalCharge(data.amount);
@@ -230,26 +222,26 @@ export function ProductCheckoutPaymentPage({
     return data.orderId;
   }, [
     appliedDiscountCents,
-    bag,
     checkoutMeta,
     coupon,
     detailsPath,
-    effectivePriceLabel,
-    effectiveQty,
+    priceLabel,
     recapColorId,
     recapColorLabel,
+    recapQty,
     recapSize,
     variantId,
+    t,
   ]);
 
   const pricing = useMemo(() => {
-    const subtotalCents = bag?.subtotalCents ?? subtotalCentsFromCheckout(effectivePriceLabel, effectiveQty);
+    const subtotalCents = subtotalCentsFromCheckout(priceLabel, recapQty);
     const discountCents = appliedDiscountCents;
     const totalCents = totalCentsAfterDiscount(subtotalCents, discountCents);
-    const unit = parsePriceLabelToNumber(effectivePriceLabel);
-    const isEur = /€|EUR/i.test(effectivePriceLabel);
-    const isMad = /\bDH\b|\bMAD\b/i.test(effectivePriceLabel);
-    let totalLabel = effectivePriceLabel;
+    const unit = parsePriceLabelToNumber(priceLabel);
+    const isEur = /€|EUR/i.test(priceLabel);
+    const isMad = /\bDH\b|\bMAD\b/i.test(priceLabel);
+    let totalLabel = priceLabel;
     if (discountCents > 0) {
       const total = totalCents / 100;
       if (isEur) totalLabel = `€${total.toFixed(2)}`;
@@ -259,11 +251,11 @@ export function ProductCheckoutPaymentPage({
     return {
       subtotalCents,
       discountCents,
-      discountLabel: discountCents > 0 ? formatDiscountLine(discountCents, effectivePriceLabel) : null,
+      discountLabel: discountCents > 0 ? formatDiscountLine(discountCents, priceLabel) : null,
       totalLabel,
       unit,
     };
-  }, [appliedDiscountCents, bag?.subtotalCents, effectivePriceLabel, effectiveQty]);
+  }, [appliedDiscountCents, priceLabel, recapQty]);
 
   useEffect(() => {
     if (!detailsPath) {
@@ -286,11 +278,7 @@ export function ProductCheckoutPaymentPage({
     }
     setSession(data);
     if (data.couponCode && data.discountCents) {
-      const restored = applyCouponToSubtotal(
-        data.couponCode,
-        subtotalCentsFromCheckout(effectivePriceLabel, effectiveQty),
-        effectivePriceLabel,
-      );
+      const restored = applyCouponToSubtotal(data.couponCode, subtotalCentsFromCheckout(priceLabel, recapQty), priceLabel);
       setCoupon(restored.ok ? restored : null);
     }
     const codOk = isCashOnDeliveryAvailable(data.buyerCountry);
@@ -301,37 +289,14 @@ export function ProductCheckoutPaymentPage({
     if (data.paymentMethod === "cod") setPaySelection("cod");
     else if (data.paymentInstrument === "paypal_card") setPaySelection("paypal_card");
     else setPaySelection("paypal_wallet");
-  }, [detailsHref, detailsPath, effectivePriceLabel, effectiveQty, router]);
+  }, [detailsHref, detailsPath, priceLabel, recapQty, router]);
 
   useEffect(() => {
-    if (!session || !detailsPath) return;
+    if (!session || !checkoutMeta || !detailsPath || soldOut || !variantId) return;
     const placementKey = session.placementKey?.trim() || ensureCheckoutPlacementKey(detailsPath);
     if (!placementKey) return;
 
-    if (bag?.primaryLineItem.bagLines?.length) {
-      let cancelled = false;
-      setStockHold("pending");
-      setStockReserveError(null);
-      void reserveCheckoutStockBag(placementKey, bag.primaryLineItem.bagLines).then((result) => {
-        if (cancelled) return;
-        if (!result.ok) {
-          setStockReserveError(result.error);
-          setStockHold("unavailable");
-        } else {
-          setStockReserveError(null);
-          setStockHold("held");
-        }
-      });
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    if (!checkoutMeta || !variantId) return;
-
     let cancelled = false;
-    setStockHold("pending");
-    setStockReserveError(null);
     void reserveCheckoutStock(placementKey, {
       artistSlug: checkoutMeta.artistSlug,
       itemSlug: checkoutMeta.itemSlug,
@@ -346,20 +311,14 @@ export function ProductCheckoutPaymentPage({
       colorLabel: recapColorLabel,
     }).then((result) => {
       if (cancelled) return;
-      if (!result.ok) {
-        setStockReserveError(result.error);
-        setStockHold("unavailable");
-      } else {
-        setStockReserveError(null);
-        setStockHold("held");
-      }
+      if (!result.ok) setStockReserveError(result.error);
+      else setStockReserveError(null);
     });
 
     return () => {
       cancelled = true;
     };
   }, [
-    bag,
     checkoutMeta,
     detailsPath,
     displayTitle,
@@ -370,11 +329,9 @@ export function ProductCheckoutPaymentPage({
     recapQty,
     recapSize,
     session,
+    soldOut,
     variantId,
   ]);
-
-  const checkoutBlocked = stockHold === "unavailable";
-  const stockPending = stockHold === "pending";
 
   const persistCoupon = useCallback(
     (next: CouponResult | null) => {
@@ -401,14 +358,14 @@ export function ProductCheckoutPaymentPage({
   const paypalComplete = Boolean(session?.paypalOrderId?.trim());
 
   const goToConfirm = useCallback(() => {
-    if (checkoutBlocked) return;
+    if (soldOut) return;
     if (!detailsPath || !session) return;
     if (isCheckoutSessionExpired(session.savedAt)) {
       setPaymentHint(checkoutSessionExpiryMessage());
       return;
     }
     if (paypalRequired && !paypalComplete) {
-      setPaymentHint("Complete payment with the PayPal button above before continuing.");
+      setPaymentHint(t("completePayPalFirst"));
       return;
     }
     setPaymentHint(null);
@@ -422,7 +379,7 @@ export function ProductCheckoutPaymentPage({
       });
     }
     router.push(confirmHref);
-  }, [checkoutBlocked, confirmHref, detailsPath, paySelection, paypalComplete, paypalRequired, router, session]);
+  }, [confirmHref, detailsPath, paySelection, paypalComplete, paypalRequired, router, session, t]);
 
   const onPayPalApproved = useCallback(
     (result: { paypalOrderId?: string; paypalCaptureId?: string }) => {
@@ -449,24 +406,21 @@ export function ProductCheckoutPaymentPage({
 
   const continueLabel =
     paySelection === "cod" && codAvailable
-      ? CHECKOUT_PAYMENT_PRIMARY_CTA
+      ? t("continueToConfirmation")
       : paypalComplete
-        ? "Continue to confirmation"
-        : "Complete PayPal payment above";
+        ? t("continueToConfirmation")
+        : t("completePayPalFirst");
 
   const continueDisabled =
-    checkoutBlocked ||
-    stockPending ||
-    (paypalRequired && !paypalComplete) ||
-    isCheckoutSessionExpired(session?.savedAt);
+    soldOut || (paypalRequired && !paypalComplete) || isCheckoutSessionExpired(session?.savedAt);
   const showPaymentHero = !loading && session !== null;
   const showPayPalUi = paySelection === "paypal_wallet" || paySelection === "paypal_card";
   const deliveryHint = useMemo(
     () =>
       session && isCashOnDeliveryAvailable(session.buyerCountry)
-        ? "Morocco · COD or online payment on this step."
-        : "International · secure PayPal (wallet or guest card).",
-    [session],
+        ? t("deliveryHintMorocco")
+        : t("deliveryHintIntl"),
+    [session, t],
   );
 
   return (
@@ -493,20 +447,20 @@ export function ProductCheckoutPaymentPage({
                 <span aria-hidden className="text-[15px] leading-none text-slate-500">
                   ←
                 </span>
-                Back to product
+                {t("backToProduct")}
               </Link>
               <Link
                 href={detailsHref}
                 className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-[13px] font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
               >
-                Edit information
+                {t("editInformation")}
               </Link>
               <span className="hidden rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold text-slate-600 sm:inline-flex">
-                Step 2 · Payment
+                {t("step2Payment")}
               </span>
             </div>
             <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-normal text-slate-500 sm:hidden">
-              Payment
+              {t("payment")}
             </span>
           </div>
           <CheckoutStepGraphic activeStep={2} />
@@ -523,28 +477,16 @@ export function ProductCheckoutPaymentPage({
           <div className="min-w-0">
             {showPaymentHero ? (
               <div className="mb-6 hidden sm:block">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Salvya · checkout wizard</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">{t("wizardKicker")}</p>
                 <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-slate-900 sm:text-[1.7rem]">
-                  Payment method
+                  {t("paymentMethod")}
                 </h1>
                 <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-slate-600">
-                  {codAvailable ? (
-                    <>
-                      Morocco: choose <span className="font-medium text-slate-800">cash on delivery</span>, your{" "}
-                      <span className="font-medium text-slate-800">PayPal balance</span>, or pay as{" "}
-                      <span className="font-medium text-slate-800">guest with Visa / Mastercard</span> through PayPal.
-                    </>
-                  ) : (
-                    <>
-                      Your address is outside Morocco —{" "}
-                      <span className="font-medium text-slate-800">online payment only</span>. Use PayPal with a wallet or
-                      guest checkout with a bank card ({artistName}).
-                    </>
-                  )}
+                  {codAvailable ? t("paymentIntroMorocco") : t("paymentIntroIntl")}
                 </p>
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                   <CardBrandRow />
-                  <span className="text-[11px] text-slate-500">Cards are processed by PayPal — no card numbers stored on Salvya.</span>
+                  <span className="text-[11px] text-slate-500">{t("cardsNotStored")}</span>
                 </div>
               </div>
             ) : (
@@ -554,57 +496,57 @@ export function ProductCheckoutPaymentPage({
             <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_24px_60px_-28px_rgba(15,23,42,0.18)]">
               <div className="h-1 w-full bg-gradient-to-r from-[#2D6BFF] via-indigo-400 to-[#2D6BFF]" aria-hidden />
               <div className="border-b border-slate-100 px-5 py-5 sm:px-6 sm:py-6">
-                <h1 className="text-xl font-semibold tracking-tight text-slate-900 sm:hidden">Payment</h1>
+                <h1 className="text-xl font-semibold tracking-tight text-slate-900 sm:hidden">{t("payment")}</h1>
                 <p className="mt-1 text-[13px] text-slate-500 sm:hidden">
-                  {!loading && session ? (codAvailable ? "COD · PayPal · Card" : "PayPal only") : null} · {artistName}
+                  {!loading && session ? (codAvailable ? t("cashOnDelivery") : t("payWithPayPal")) : null} · {artistName}
                 </p>
                 <p className="mt-3 hidden text-[13px] text-slate-500 sm:block">
-                  {kindLabel} · {productKind === "hoodie" ? "Oversize hoodie" : "Oversize tee"}
+                  {kindLabel} · {productKind === "hoodie" ? t("oversizeHoodie") : t("oversizeTee")}
                 </p>
               </div>
 
               {loading ? (
-                <div className="px-5 py-10 text-center text-[14px] text-slate-500 sm:px-6">Preparing payment step…</div>
+                <div className="px-5 py-10 text-center text-[14px] text-slate-500 sm:px-6">{t("preparingPayment")}</div>
               ) : session ? (
                 <>
                   <div
                     role="status"
                     className="mx-5 mt-4 rounded-xl border border-emerald-200/90 bg-gradient-to-r from-emerald-50/95 to-white px-4 py-3 text-[13px] text-emerald-950 sm:mx-6"
                   >
-                    <p className="font-semibold text-emerald-950">Details on file</p>
-                    <p className="mt-1 text-emerald-900/90">Review your recap below, pick a payment option, then continue.</p>
+                    <p className="font-semibold text-emerald-950">{t("detailsOnFile")}</p>
+                    <p className="mt-1 text-emerald-900/90">{t("choosePayment")}</p>
                   </div>
 
                   <div className="space-y-3 border-b border-slate-100 px-5 py-5 text-[13px] text-slate-700 sm:px-6">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Ship to</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">{t("recapShipTo")}</p>
                     <dl className="grid gap-3 sm:grid-cols-2">
                       <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5">
-                        <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Name</dt>
+                        <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{t("recapName")}</dt>
                         <dd className="mt-0.5 font-medium text-slate-900">{session.buyerName}</dd>
                       </div>
                       <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5">
-                        <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Phone</dt>
+                        <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{t("recapPhone")}</dt>
                         <dd className="mt-0.5 font-medium text-slate-900">{session.buyerPhone}</dd>
                       </div>
                       <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5 sm:col-span-2">
-                        <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Country</dt>
+                        <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{t("recapCountry")}</dt>
                         <dd className="mt-0.5 font-medium text-slate-900">{checkoutCountryLabel(session.buyerCountry)}</dd>
                       </div>
                       {session.buyerEmail.trim() ? (
                         <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5 sm:col-span-2">
-                          <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Email</dt>
+                          <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{t("recapEmail")}</dt>
                           <dd className="mt-0.5 font-medium text-slate-900">{session.buyerEmail}</dd>
                         </div>
                       ) : null}
                       {session.buyerCity.trim() ? (
                         <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5">
-                          <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">City</dt>
+                          <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{t("recapCity")}</dt>
                           <dd className="mt-0.5 font-medium text-slate-900">{session.buyerCity}</dd>
                         </div>
                       ) : null}
                       {session.buyerAddress.trim() ? (
                         <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5 sm:col-span-2">
-                          <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Address</dt>
+                          <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{t("recapAddress")}</dt>
                           <dd className="mt-0.5 leading-relaxed text-slate-900">{session.buyerAddress}</dd>
                         </div>
                       ) : null}
@@ -614,9 +556,9 @@ export function ProductCheckoutPaymentPage({
                   <div className="space-y-4 border-b border-slate-100 px-5 py-5 sm:px-6">
                     <CheckoutPaymentTrustStrip />
                     <div className="flex flex-wrap items-end justify-between gap-2">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Choose payment</p>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">{t("choosePayment")}</p>
                       <span className="rounded-full bg-slate-900 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/90">
-                        Secure
+                        {tCommon("secure")}
                       </span>
                     </div>
 
@@ -626,39 +568,35 @@ export function ProductCheckoutPaymentPage({
                           role="note"
                           className="rounded-xl border border-amber-200/90 bg-gradient-to-r from-amber-50 to-white px-4 py-3 text-[13px] text-amber-950"
                         >
-                          <p className="font-semibold">International shipping</p>
-                          <p className="mt-1 leading-relaxed text-amber-900/90">
-                            Cash on delivery is only offered in Morocco. Complete checkout with PayPal below — use your
-                            PayPal balance or pay with Visa / Mastercard as a guest.
-                          </p>
+                          <p className="font-semibold">{t("intlShippingNote")}</p>
+                          <p className="mt-1 leading-relaxed text-amber-900/90">{t("paymentIntroIntl")}</p>
                         </div>
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                           <PaymentWizardTile
                             selected={paySelection === "paypal_wallet"}
                             onSelect={() => selectPayment("paypal_wallet")}
-                            title="PayPal balance"
-                            description="Log in with your PayPal account and pay in one tap."
+                            title={t("payPaypalBalance")}
+                            description={t("payPaypalAccount")}
                             badge={<PayPalMarkImg className="h-7" />}
                           />
                           <PaymentWizardTile
                             selected={paySelection === "paypal_card"}
                             onSelect={() => selectPayment("paypal_card")}
-                            title="Debit / credit card"
-                            description="Visa or Mastercard — guest checkout, secured by PayPal."
+                            title={t("payCard")}
+                            description={t("payCardDesc")}
                             badge={<CardBrandRow />}
                           />
                         </div>
                         {showPayPalUi ? (
                           <div className="space-y-3 rounded-2xl border border-slate-200/90 bg-slate-50/50 p-4">
                             <p className="text-[12px] leading-relaxed text-slate-600">
-                              Order amount for PayPal:{" "}
+                              {t("payWithPayPal")}:{" "}
                               <span className="font-mono font-semibold text-slate-900">{paypalValue}</span>{" "}
                               <span className="font-mono font-semibold text-slate-900">{paypalCurrency}</span>
-                              {/\bDH\b|\bMAD\b/i.test(priceLabel) ? (
-                                <span className="text-slate-500"> (cart {priceLabel}; PayPal uses USD in Sandbox.)</span>
-                              ) : (
-                                <span className="text-slate-500"> (from {priceLabel})</span>
-                              )}
+                              <span className="text-slate-500">
+                                {" "}
+                                ({t("subtotal")} {priceLabel})
+                              </span>
                             </p>
                             <PayPalHostedButtons
                               clientId={paypalClientId}
@@ -668,15 +606,10 @@ export function ProductCheckoutPaymentPage({
                               createOrder={createPayPalOrder}
                               onApproved={onPayPalApproved}
                               onError={setPaypalUiError}
-                              onCancel={() => {
-                                setPaypalUiError(null);
-                                setPaymentHint(null);
-                              }}
-                              disabled={checkoutBlocked || stockPending}
+                              onCancel={() => setPaymentHint(t("paymentCancelled"))}
+                              disabled={soldOut}
                             />
-                            <p className="text-[11px] leading-relaxed text-slate-500">
-                              After PayPal succeeds you&apos;ll continue to order confirmation with your Salvya reference.
-                            </p>
+                            <p className="text-[11px] leading-relaxed text-slate-500">{t("paypalReceived")}</p>
                           </div>
                         ) : null}
                       </>
@@ -686,26 +619,26 @@ export function ProductCheckoutPaymentPage({
                           <PaymentWizardTile
                             selected={paySelection === "cod"}
                             onSelect={() => selectPayment("cod")}
-                            title="Cash on delivery"
-                            description="Pay the courier in cash when your parcel arrives in Morocco."
+                            title={t("payCod")}
+                            description={t("payCodDesc")}
                             badge={
                               <span className="inline-flex items-center rounded-md bg-slate-900 px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
-                                COD
+                                {t("cashOnDelivery")}
                               </span>
                             }
                           />
                           <PaymentWizardTile
                             selected={paySelection === "paypal_wallet"}
                             onSelect={() => selectPayment("paypal_wallet")}
-                            title="PayPal account"
-                            description="Use your PayPal balance or linked bank account."
+                            title={t("payPaypalAccount")}
+                            description={t("payPaypalBalance")}
                             badge={<PayPalMarkImg className="h-7" />}
                           />
                           <PaymentWizardTile
                             selected={paySelection === "paypal_card"}
                             onSelect={() => selectPayment("paypal_card")}
-                            title="Bank card"
-                            description="Visa or Mastercard — no PayPal account required."
+                            title={t("payCard")}
+                            description={t("payCardDesc")}
                             badge={<CardBrandRow />}
                           />
                         </div>
@@ -713,20 +646,15 @@ export function ProductCheckoutPaymentPage({
                         {showPayPalUi ? (
                           <div className="space-y-3 rounded-2xl border border-slate-200/90 bg-slate-50/50 p-4">
                             <p className="text-[12px] font-medium text-slate-800">
-                              {paySelection === "paypal_card" ? "Card checkout (PayPal guest)" : "PayPal account checkout"}
+                              {paySelection === "paypal_card" ? t("payCard") : t("payPaypalAccount")}
                             </p>
                             <p className="text-[12px] leading-relaxed text-slate-600">
-                              PayPal order: <span className="font-mono font-semibold">{paypalValue}</span>{" "}
+                              {t("payWithPayPal")}: <span className="font-mono font-semibold">{paypalValue}</span>{" "}
                               <span className="font-mono font-semibold">{paypalCurrency}</span>
-                              {/\bDH\b|\bMAD\b/i.test(priceLabel) ? (
-                                <span className="text-slate-500">
-                                  {" "}
-                                  — cart <span className="font-medium text-slate-800">{priceLabel}</span>; PayPal uses USD in
-                                  Sandbox.
-                                </span>
-                              ) : (
-                                <span> — from {priceLabel}</span>
-                              )}
+                              <span className="text-slate-500">
+                                {" "}
+                                — {t("subtotal")} <span className="font-medium text-slate-800">{priceLabel}</span>
+                              </span>
                             </p>
                             <PayPalHostedButtons
                               clientId={paypalClientId}
@@ -736,17 +664,13 @@ export function ProductCheckoutPaymentPage({
                               createOrder={createPayPalOrder}
                               onApproved={onPayPalApproved}
                               onError={setPaypalUiError}
-                              onCancel={() => {
-                                setPaypalUiError(null);
-                                setPaymentHint(null);
-                              }}
-                              disabled={checkoutBlocked || stockPending}
+                              onCancel={() => setPaymentHint(t("paymentCancelled"))}
+                              disabled={soldOut}
                             />
                           </div>
                         ) : (
                           <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/40 px-4 py-3 text-[12px] leading-relaxed text-slate-600">
-                            No online payment needed for COD. Tap <span className="font-medium text-slate-800">Continue</span>{" "}
-                            to review your order on the confirmation screen.
+                            {t("codNote")}
                           </div>
                         )}
                       </>
@@ -761,11 +685,6 @@ export function ProductCheckoutPaymentPage({
                         {paymentHint}
                       </p>
                     ) : null}
-                    {stockReserveError ? (
-                      <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-950" role="alert">
-                        {stockReserveError}
-                      </p>
-                    ) : null}
                     {paypalUiError ? (
                       <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-950" role="alert">
                         {paypalUiError}
@@ -773,19 +692,13 @@ export function ProductCheckoutPaymentPage({
                     ) : null}
                     {paypalComplete && paypalRequired ? (
                       <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] font-medium text-emerald-950" role="status">
-                        PayPal payment received — you can continue to confirmation.
+                        {t("paypalReceived")}
                       </p>
                     ) : null}
 
-                    {stockPending ? (
-                      <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[13px] text-slate-700" role="status">
-                        Securing your size for checkout…
-                      </p>
-                    ) : null}
-                    {checkoutBlocked ? (
+                    {soldOut ? (
                       <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] font-medium text-amber-950">
-                        {stockReserveError ??
-                          "This item is sold out — payment and confirmation are unavailable."}
+                        {t("soldOutPayment")}
                       </p>
                     ) : null}
                     <motion.button
@@ -803,7 +716,7 @@ export function ProductCheckoutPaymentPage({
                     </motion.button>
                     <p className="text-center text-[11px] leading-relaxed text-slate-400">
                       {paypalClientId.trim() ? (
-                        <>PayPal secured checkout. COD skips the PayPal window.</>
+                        <>{t("buyPanel.trustLine")}</>
                       ) : (
                         <>
                           Add <span className="font-mono text-[10px]">NEXT_PUBLIC_PAYPAL_CLIENT_ID</span> to{" "}
@@ -814,34 +727,11 @@ export function ProductCheckoutPaymentPage({
                   </div>
                 </>
               ) : (
-                <div className="px-5 py-10 text-center text-[14px] text-slate-500 sm:px-6">Returning to information step…</div>
+                <div className="px-5 py-10 text-center text-[14px] text-slate-500 sm:px-6">{t("returningToCheckout")}</div>
               )}
             </div>
           </div>
 
-          {bag ? (
-            <BagCheckoutOrderSummary
-              lines={bag.summaryLines}
-              subtotalLabel={bag.subtotalLabel}
-              discountLabel={pricing.discountLabel}
-              totalLabel={pricing.totalLabel}
-              footer={
-                <div className="mt-3 space-y-3">
-                  {detailsPath && pathname ? (
-                    <CheckoutCouponField
-                      priceLabel={effectivePriceLabel}
-                      recapQty={effectiveQty}
-                      pathname={pathname}
-                      productId={contentId}
-                      artistSlug={bag.summaryLines[0]?.artistSlug ?? null}
-                      applied={coupon?.ok ? coupon : null}
-                      onApplied={persistCoupon}
-                    />
-                  ) : null}
-                </div>
-              }
-            />
-          ) : (
           <ProductCheckoutOrderSummary
             displayTitle={displayTitle}
             recapColorLabel={recapColorLabel}
@@ -868,18 +758,16 @@ export function ProductCheckoutPaymentPage({
                 ) : null}
                 <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 text-[11px] leading-snug text-slate-600">
                   <p>
-                    <span className="text-slate-500">Next · </span>
-                    <span className="font-medium text-slate-800">{CHECKOUT_NEXT_STEP_PAGE}</span>
+                    <span className="font-medium text-slate-800">{t("confirm")}</span>
                   </p>
                   <div className="flex items-center justify-between gap-2 border-t border-slate-100/80 pt-2">
-                    <span className="text-slate-500">Pay with</span>
+                    <span className="text-slate-500">{t("payWithPayPal")}</span>
                     <CardBrandRow className="scale-90" />
                   </div>
                 </div>
               </div>
             }
           />
-          )}
         </div>
       </motion.main>
     </div>

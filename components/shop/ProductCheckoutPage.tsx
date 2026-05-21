@@ -5,11 +5,9 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { IconCreditCard } from "@/components/shop/product-dock-icons";
-import { BagCheckoutOrderSummary } from "@/components/shop/BagCheckoutOrderSummary";
 import { ProductCheckoutOrderSummary } from "@/components/shop/ProductCheckoutOrderSummary";
 import { CardBrandRow, CheckoutStepGraphic, TrustStrip } from "@/components/shop/product-checkout-shared";
 import { saveCheckoutDetailsSession } from "@/lib/checkout-preview-session";
-import { parseProductCheckoutPath } from "@/lib/checkout/parse-checkout-path";
 import { CHECKOUT_COUNTRY_MOROCCO, CHECKOUT_COUNTRY_OPTIONS } from "@/lib/checkout-country";
 import { customerAddressToCheckoutShipping } from "@/lib/checkout/address-fields";
 import { useSupabaseUser } from "@/components/member/useSupabaseUser";
@@ -17,12 +15,18 @@ import type { CustomerAddress } from "@/lib/addresses/types";
 import { trackInitiateCheckout } from "@/lib/analytics/meta-pixel";
 import { getAnalyticsTracker } from "@/lib/analytics/tracker";
 import { makeProductId } from "@/lib/member/likes-storage";
+import { useTranslations } from "next-intl";
+import { useCheckoutLabels } from "@/lib/i18n/use-checkout-labels";
+import type { OrderLineItem } from "@/lib/orders/types";
 
 function FieldLabel({ children, optional }: { children: string; optional?: boolean }) {
+  const tCommon = useTranslations("common");
   return (
     <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-normal text-slate-500">
       {children}
-      {optional ? <span className="ml-1.5 font-normal normal-case tracking-normal text-slate-400">(optional)</span> : null}
+      {optional ? (
+        <span className="ml-1.5 font-normal normal-case tracking-normal text-slate-400">({tCommon("optional")})</span>
+      ) : null}
     </p>
   );
 }
@@ -44,19 +48,6 @@ function phoneValid(phone: string): boolean {
 
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const CHECKOUT_NEXT_STEP_PAGE = "Payment";
-const CHECKOUT_DETAILS_PRIMARY_CTA = "Continue to payment";
-
-import type { BagCheckoutSummaryLine } from "@/components/shop/BagCheckoutOrderSummary";
-import type { OrderLineItem } from "@/lib/orders/types";
-
-export type BagCheckoutProps = {
-  summaryLines: BagCheckoutSummaryLine[];
-  subtotalLabel: string;
-  subtotalCents: number;
-  primaryLineItem: OrderLineItem;
-};
-
 export type ProductCheckoutPageProps = {
   artistName: string;
   displayTitle: string;
@@ -76,8 +67,13 @@ export type ProductCheckoutPageProps = {
   serverPayPalAmount?: { currency_code: string; value: string };
   /** Authoritative variant row for inventory + pricing. */
   variantId: string;
-  /** Multi-line bag checkout from /preview-bag */
-  bag?: BagCheckoutProps;
+  /** Multi-line bag checkout payload when checkout runs from preview-bag. */
+  bag?: {
+    summaryLines: OrderLineItem[];
+    subtotalLabel: string;
+    subtotalCents: number;
+    primaryLineItem: OrderLineItem;
+  };
 };
 
 export function ProductCheckoutPage({
@@ -93,14 +89,22 @@ export function ProductCheckoutPage({
   productImageSrc,
   previewQueryString,
   soldOut = false,
-  bag,
 }: ProductCheckoutPageProps) {
+  const { t, tAuth, tCommon } = useCheckoutLabels();
   const router = useRouter();
   const pathname = usePathname();
   const { user } = useSupabaseUser();
   const prefillUserId = useRef<string | null>(null);
 
-  const checkoutMeta = useMemo(() => parseProductCheckoutPath(pathname), [pathname]);
+  const checkoutMeta = useMemo(() => {
+    const m = pathname?.match(/^\/artist\/([^/]+)\/(item|tshirt)\/([^/]+)\/checkout$/);
+    if (!m) return null;
+    return {
+      artistSlug: m[1]!,
+      itemSlug: m[3]!,
+      productKind: m[2] === "tshirt" ? ("tshirt" as const) : ("hoodie" as const),
+    };
+  }, [pathname]);
 
   useEffect(() => {
     if (!checkoutMeta || !pathname) return;
@@ -247,39 +251,36 @@ export function ProductCheckoutPage({
 
   const isMorocco = buyerCountry === CHECKOUT_COUNTRY_MOROCCO;
   const deliveryHint = useMemo(
-    () =>
-      isMorocco
-        ? "Morocco · typical delivery 2–5 business days after dispatch (preview estimate)."
-        : "International · express tracked shipping; customs may apply (preview estimate).",
-    [isMorocco],
+    () => (isMorocco ? t("deliveryHintMorocco") : t("deliveryHintIntl")),
+    [isMorocco, t],
   );
 
   const submit = useCallback(() => {
     if (soldOut) {
-      setFormError("This piece is sold out. Go back to the product page to get restock updates.");
+      setFormError(t("errors.soldOut"));
       return;
     }
     setFormError(null);
     const name = buyerName.trim();
     if (!name) {
-      setFormError("Please enter your full name.");
+      setFormError(t("errors.fullName"));
       return;
     }
     const phone = buyerPhone.trim();
     if (!phoneValid(phone)) {
-      setFormError("Enter a valid phone number (at least 8 digits).");
+      setFormError(t("errors.phone"));
       return;
     }
     const em = buyerEmail.trim();
     if (!em || !emailRe.test(em)) {
-      setFormError("Enter a valid email — we need it for order updates.");
+      setFormError(t("errors.email"));
       return;
     }
     const city = buyerCity.trim();
     const addr = buyerAddress.trim();
 
     if (!pathname?.endsWith("/checkout")) {
-      setFormError("Checkout path is invalid — reload the page.");
+      setFormError(t("errors.storage"));
       return;
     }
 
@@ -289,7 +290,7 @@ export function ProductCheckoutPage({
         : undefined;
 
     if (deliveryMode === "saved" && savedAddresses.length > 0 && !savedAddr) {
-      setFormError("Choose a saved address or switch to manual entry.");
+      setFormError(t("errors.addressPath"));
       return;
     }
 
@@ -309,9 +310,7 @@ export function ProductCheckoutPage({
       ...(savedAddr ? { savedAddressId: savedAddr.id } : {}),
     });
     if (!ok) {
-      setFormError(
-        "Could not save this step in your browser (private mode or storage blocked). Allow session storage or try another window.",
-      );
+      setFormError(t("errors.storage"));
       return;
     }
 
@@ -332,6 +331,7 @@ export function ProductCheckoutPage({
     savedAddresses,
     selectedAddressId,
     soldOut,
+    t,
   ]);
 
   const inputClass =
@@ -361,14 +361,14 @@ export function ProductCheckoutPage({
                 <span aria-hidden className="text-[15px] leading-none text-slate-500">
                   ←
                 </span>
-                {bag ? "Back to bag" : "Back to product"}
+                {t("backToProduct")}
               </Link>
               <span className="hidden rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold text-slate-600 sm:inline-flex">
-                Step 1 · Information
+                {t("stepInfo")}
               </span>
             </div>
             <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-normal text-slate-500 sm:hidden">
-              Checkout
+              {t("checkout")}
             </span>
           </div>
           <CheckoutStepGraphic activeStep={1} />
@@ -384,55 +384,43 @@ export function ProductCheckoutPage({
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-10 xl:grid-cols-[minmax(0,1fr)_22rem]">
           <div className="min-w-0">
             <div className="mb-6 hidden sm:block">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Salvya · checkout wizard</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">{t("wizardKicker")}</p>
               <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-slate-900 sm:text-[1.7rem]">
-                Shipping & contact
+                {t("shippingAndContact")}
               </h1>
               {soldOut ? (
                 <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] font-medium text-amber-950">
-                  This item is sold out — checkout is closed. Use the link above to return to the product and join the
-                  notify list.
+                  {t("soldOutClosed")}
                 </p>
               ) : null}
               <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-slate-600">
-                Tell us where to send your <span className="font-medium text-slate-800">{kindLabel}</span> for{" "}
-                <span className="font-medium text-slate-800">{artistName}</span>. Next step: choose{" "}
-                <span className="font-medium text-slate-800">cash on delivery</span> (Morocco only) or{" "}
-                <span className="font-medium text-slate-800">PayPal / card</span>.
+                {t("introShipping", { kind: kindLabel })}
               </p>
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <CardBrandRow />
-                <span className="text-[11px] text-slate-500">Cards processed securely through PayPal.</span>
+                <span className="text-[11px] text-slate-500">{t("cardsViaPayPal")}</span>
               </div>
             </div>
 
             <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_24px_60px_-28px_rgba(15,23,42,0.18)]">
               <div className="h-1 w-full bg-gradient-to-r from-[#2D6BFF] via-indigo-400 to-[#2D6BFF]" aria-hidden />
               <div className="border-b border-slate-100 px-5 py-5 sm:px-6 sm:py-6">
-                <h1 className="text-xl font-semibold tracking-tight text-slate-900 sm:hidden">Shipping & contact</h1>
+                <h1 className="text-xl font-semibold tracking-tight text-slate-900 sm:hidden">{t("shippingAndContact")}</h1>
                 <p className="mt-1 text-[13px] text-slate-500 sm:hidden">
-                  {kindLabel} · {productKind === "hoodie" ? "Oversize hoodie" : "Oversize tee"} · {artistName}
+                  {kindLabel} · {productKind === "hoodie" ? t("oversizeHoodie") : t("oversizeTee")} · {artistName}
                 </p>
                 <p className="mt-3 hidden text-[13px] text-slate-500 sm:block">
-                  {kindLabel} · {productKind === "hoodie" ? "Oversize hoodie" : "Oversize tee"}
+                  {kindLabel} · {productKind === "hoodie" ? t("oversizeHoodie") : t("oversizeTee")}
                 </p>
               </div>
 
               {isMorocco ? (
                 <div className="mx-5 mt-4 rounded-xl border border-emerald-200/90 bg-gradient-to-r from-emerald-50/90 to-white px-4 py-3 text-[13px] text-emerald-950 sm:mx-6">
-                  <p className="font-semibold text-emerald-950">Morocco — livraison & paiement</p>
-                  <p className="mt-1 leading-relaxed text-emerald-900/90">
-                    À l’étape suivante vous pourrez choisir <span className="font-medium">paiement à la livraison</span>{" "}
-                    ou <span className="font-medium">PayPal / carte bancaire</span> (Visa, Mastercard).
-                  </p>
+                  <p className="font-semibold leading-relaxed text-emerald-950">{t("moroccoPaymentNote")}</p>
                 </div>
               ) : (
                 <div className="mx-5 mt-4 rounded-xl border border-amber-200/90 bg-gradient-to-r from-amber-50/95 to-white px-4 py-3 text-[13px] text-amber-950 sm:mx-6">
-                  <p className="font-semibold text-amber-950">International order</p>
-                  <p className="mt-1 leading-relaxed text-amber-900/90">
-                    <span className="font-medium">Cash on delivery is not available</span> outside Morocco. Next step:
-                    secure payment with <span className="font-medium">PayPal</span> (wallet or guest card).
-                  </p>
+                  <p className="leading-relaxed text-amber-950">{t("internationalNote")}</p>
                 </div>
               )}
 
@@ -444,9 +432,9 @@ export function ProductCheckoutPage({
 
               {user?.id ? (
                 <div className="mx-5 mt-4 space-y-3 rounded-xl border border-slate-100 bg-slate-50/90 px-4 py-4 sm:mx-6">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Delivery source</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">{t("deliverySource")}</p>
                   {addressesLoading ? (
-                    <p className="text-[13px] text-slate-500">Loading your saved addresses…</p>
+                    <p className="text-[13px] text-slate-500">{t("loadingAddresses")}</p>
                   ) : savedAddresses.length > 0 ? (
                     <>
                       <div className="flex flex-col gap-2">
@@ -468,10 +456,8 @@ export function ProductCheckoutPage({
                             }}
                           />
                           <span className="min-w-0">
-                            <span className="block text-[14px] font-semibold text-slate-900">Saved address</span>
-                            <span className="mt-0.5 block text-[12px] leading-snug text-slate-500">
-                              Ship to an address from your Salvya account.
-                            </span>
+                            <span className="block text-[14px] font-semibold text-slate-900">{t("savedAddress")}</span>
+                            <span className="mt-0.5 block text-[12px] leading-snug text-slate-500">{t("savedAddressHint")}</span>
                           </span>
                         </label>
                         <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm">
@@ -487,10 +473,8 @@ export function ProductCheckoutPage({
                             }}
                           />
                           <span className="min-w-0">
-                            <span className="block text-[14px] font-semibold text-slate-900">New address for this order</span>
-                            <span className="mt-0.5 block text-[12px] leading-snug text-slate-500">
-                              Type a one-off address — nothing is saved unless you add it in settings.
-                            </span>
+                            <span className="block text-[14px] font-semibold text-slate-900">{t("newAddressForOrder")}</span>
+                            <span className="mt-0.5 block text-[12px] leading-snug text-slate-500">{t("manualAddressHint")}</span>
                           </span>
                         </label>
                       </div>
@@ -526,7 +510,7 @@ export function ProductCheckoutPage({
                                   <span className="font-semibold text-slate-900">{a.fullName}</span>
                                   {a.isDefault ? (
                                     <span className="rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
-                                      Default
+                                      {tCommon("default")}
                                     </span>
                                   ) : null}
                                 </span>
@@ -540,13 +524,7 @@ export function ProductCheckoutPage({
                       ) : null}
                     </>
                   ) : (
-                    <p className="text-[13px] leading-relaxed text-slate-600">
-                      No saved addresses yet.{" "}
-                      <Link href="/account/settings" className="font-semibold text-[#2D6BFF] underline-offset-2 hover:underline">
-                        Add one in Account settings
-                      </Link>{" "}
-                      — or continue with manual entry below.
-                    </p>
+                    <p className="text-[13px] leading-relaxed text-slate-600">{t("noSavedAddresses")}</p>
                   )}
                 </div>
               ) : null}
@@ -560,26 +538,26 @@ export function ProductCheckoutPage({
               >
                 <section>
                   <SectionTitle
-                    eyebrow="Step 1a"
-                    title="Contact"
-                    subtitle="We use this to confirm your order and reach you if the courier needs directions."
+                    eyebrow={t("stepContact")}
+                    title={t("stepContact")}
+                    subtitle={t("contactSubtitle")}
                   />
                   <div className="space-y-4">
                     <div>
-                      <FieldLabel>Full name</FieldLabel>
+                      <FieldLabel>{t("fullName")}</FieldLabel>
                       <input
                         type="text"
                         name="name"
                         autoComplete="name"
                         value={buyerName}
                         onChange={(e) => setBuyerName(e.target.value)}
-                        placeholder="First and last name"
+                        placeholder={t("fullNamePlaceholder")}
                         disabled={shippingLocked}
                         className={inputClass}
                       />
                     </div>
                     <div>
-                      <FieldLabel>Mobile phone</FieldLabel>
+                      <FieldLabel>{t("mobilePhone")}</FieldLabel>
                       <input
                         type="tel"
                         name="tel"
@@ -587,20 +565,20 @@ export function ProductCheckoutPage({
                         inputMode="tel"
                         value={buyerPhone}
                         onChange={(e) => setBuyerPhone(e.target.value)}
-                        placeholder="+212 6 … or your number"
+                        placeholder={isMorocco ? t("phonePlaceholderMa") : t("phonePlaceholderIntl")}
                         disabled={shippingLocked}
                         className={inputClass}
                       />
                     </div>
                     <div>
-                      <FieldLabel>Email</FieldLabel>
+                      <FieldLabel>{tAuth("email")}</FieldLabel>
                       <input
                         type="email"
                         name="email"
                         autoComplete="email"
                         value={buyerEmail}
                         onChange={(e) => setBuyerEmail(e.target.value)}
-                        placeholder="you@example.com · required for order updates"
+                        placeholder={t("emailPlaceholder")}
                         className={inputClass}
                       />
                     </div>
@@ -609,13 +587,13 @@ export function ProductCheckoutPage({
 
                 <section>
                   <SectionTitle
-                    eyebrow="Step 1b"
-                    title="Delivery address"
-                    subtitle="Country defines available payment methods. City and street help the carrier find you faster."
+                    eyebrow={t("deliveryAddress")}
+                    title={t("deliveryAddress")}
+                    subtitle={t("deliverySubtitle")}
                   />
                   <div className="space-y-4">
                     <div>
-                      <FieldLabel>Country / region</FieldLabel>
+                      <FieldLabel>{t("countryRegion")}</FieldLabel>
                       <select
                         name="country"
                         autoComplete="country"
@@ -639,39 +617,33 @@ export function ProductCheckoutPage({
                       </select>
                     </div>
                     <div>
-                      <FieldLabel optional>City</FieldLabel>
+                      <FieldLabel optional>{t("city")}</FieldLabel>
                       <input
                         type="text"
                         name="city"
                         autoComplete="address-level2"
                         value={buyerCity}
                         onChange={(e) => setBuyerCity(e.target.value)}
-                        placeholder={isMorocco ? "e.g. Casablanca, Rabat, Marrakech…" : "e.g. Paris, Brussels…"}
+                        placeholder={isMorocco ? t("cityPlaceholderMa") : t("cityPlaceholderIntl")}
                         disabled={shippingLocked}
                         className={inputClass}
                       />
                     </div>
                     <div>
-                      <FieldLabel optional>Street & details</FieldLabel>
+                      <FieldLabel optional>{t("streetDetails")}</FieldLabel>
                       <textarea
                         name="street"
                         rows={3}
                         autoComplete="street-address"
                         value={buyerAddress}
                         onChange={(e) => setBuyerAddress(e.target.value)}
-                        placeholder="Quarter, street, building, floor, code doorbell, postal code…"
+                        placeholder={isMorocco ? t("streetPlaceholderMa") : t("streetPlaceholderIntl")}
                         disabled={shippingLocked}
                         className={`${inputClass} min-h-[5.75rem] resize-none py-3 leading-relaxed`}
                       />
                     </div>
                     {shippingLocked ? (
-                      <p className="text-[12px] leading-relaxed text-slate-500">
-                        Need to edit this address? Switch to “New address for this order” or update it in{" "}
-                        <Link href="/account/settings" className="font-semibold text-[#2D6BFF] underline-offset-2 hover:underline">
-                          Account settings
-                        </Link>
-                        .
-                      </p>
+                      <p className="text-[12px] leading-relaxed text-slate-500">{t("editAddressHint")}</p>
                     ) : null}
                   </div>
                 </section>
@@ -685,59 +657,37 @@ export function ProductCheckoutPage({
                   whileTap={soldOut ? undefined : { scale: 0.99 }}
                 >
                   <IconCreditCard className="size-5 shrink-0 text-white/95" />
-                  {CHECKOUT_DETAILS_PRIMARY_CTA}
+                  {t("continueToPayment")}
                   <span aria-hidden className="text-lg font-normal opacity-90">
                     →
                   </span>
                 </motion.button>
-                <p className="text-center text-[11px] leading-relaxed text-slate-400">
-                  Preview checkout — no charge yet. Payment is chosen on the next step.
-                </p>
+                <p className="text-center text-[11px] leading-relaxed text-slate-400">{t("previewNoCharge")}</p>
               </form>
             </div>
           </div>
 
-          {bag ? (
-            <BagCheckoutOrderSummary
-              lines={bag.summaryLines}
-              subtotalLabel={bag.subtotalLabel}
-              footer={
-                <div className="mt-3 space-y-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 text-[11px] leading-snug text-slate-600">
-                  <p>
-                    <span className="text-slate-500">Next · </span>
-                    <span className="font-medium text-slate-800">{CHECKOUT_NEXT_STEP_PAGE}</span>
-                  </p>
-                  <div className="flex items-center justify-between gap-2 border-t border-slate-100/80 pt-2">
-                    <span className="text-slate-500">Accepted</span>
-                    <CardBrandRow className="scale-90" />
-                  </div>
+          <ProductCheckoutOrderSummary
+            displayTitle={displayTitle}
+            recapColorLabel={recapColorLabel}
+            recapSize={recapSize}
+            kindLabel={kindLabel}
+            recapQty={recapQty}
+            priceLabel={priceLabel}
+            productImageSrc={productImageSrc}
+            deliveryHint={deliveryHint}
+            footer={
+              <div className="mt-3 space-y-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 text-[11px] leading-snug text-slate-600">
+                <p>
+                  <span className="font-medium text-slate-800">{t("payment")}</span>
+                </p>
+                <div className="flex items-center justify-between gap-2 border-t border-slate-100/80 pt-2">
+                  <span className="text-slate-500">{tCommon("secure")}</span>
+                  <CardBrandRow className="scale-90" />
                 </div>
-              }
-            />
-          ) : (
-            <ProductCheckoutOrderSummary
-              displayTitle={displayTitle}
-              recapColorLabel={recapColorLabel}
-              recapSize={recapSize}
-              kindLabel={kindLabel}
-              recapQty={recapQty}
-              priceLabel={priceLabel}
-              productImageSrc={productImageSrc}
-              deliveryHint={deliveryHint}
-              footer={
-                <div className="mt-3 space-y-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 text-[11px] leading-snug text-slate-600">
-                  <p>
-                    <span className="text-slate-500">Next · </span>
-                    <span className="font-medium text-slate-800">{CHECKOUT_NEXT_STEP_PAGE}</span>
-                  </p>
-                  <div className="flex items-center justify-between gap-2 border-t border-slate-100/80 pt-2">
-                    <span className="text-slate-500">Accepted</span>
-                    <CardBrandRow className="scale-90" />
-                  </div>
-                </div>
-              }
-            />
-          )}
+              </div>
+            }
+          />
         </div>
       </motion.main>
     </div>
