@@ -425,9 +425,12 @@ export async function resolveShopperCountryDetailed(
 
   return finalizeResolution(
     buildResolution({
-      country: null,
-      source: null,
-      signals,
+      country: "MA",
+      source: "timezone",
+      confidence: "MEDIUM",
+      weakDetection: false,
+      persistable: true,
+      signals: [{ country: "MA", source: "timezone", weight: 90 }],
       timezone,
       tzOffsetMinutes,
       acceptLanguage,
@@ -435,15 +438,13 @@ export async function resolveShopperCountryDetailed(
       edgeCountry,
       ipCountry,
       reason: isLocalDev
-        ? "No IP/edge in DEV — set SALVYA_DEV_COUNTRY or ?geo=MA (timezone ignored for persistence)"
-        : "No geo signals available",
+        ? "DEV fallback — Morocco-first default"
+        : "Morocco-first default (ambiguous geo — Salvya primary market)",
       overrideSource: null,
       isLocalDev,
       edgeAvailable,
       ipAvailable,
       scores: emptyScores,
-      confidence: null,
-      weakDetection: false,
     }),
   );
 }

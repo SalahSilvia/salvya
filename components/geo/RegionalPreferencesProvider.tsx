@@ -123,6 +123,8 @@ export function RegionalPreferencesProvider({ children, initial }: Props) {
         displayCurrency: enforced.currency,
         geoResolved: true,
         geoManual: enforced.manual ? true : prev.geoManual,
+        geoLocked: enforced.geoLocked ? true : prev.geoLocked,
+        moroccoLikely: enforced.country === MOROCCO_COUNTRY,
         weakDetection: false,
       }));
 
@@ -143,7 +145,7 @@ export function RegionalPreferencesProvider({ children, initial }: Props) {
 
   const setDisplayCurrency = useCallback(
     (currency: CurrencyCode) => {
-      const country = snapshot.prefCountry ?? snapshot.detectedCountry ?? "EU";
+      const country = snapshot.prefCountry ?? snapshot.detectedCountry ?? MOROCCO_COUNTRY;
       void applyRegionalPreferences({ country, currency });
     },
     [applyRegionalPreferences, snapshot.detectedCountry, snapshot.prefCountry],
@@ -196,14 +198,17 @@ export function RegionalPreferencesProvider({ children, initial }: Props) {
         const matchesProfile =
           normalizeCountryCode(prev.prefCountry) === normalizeCountryCode(profile.countryCode) &&
           prev.displayCurrency === profile.currency;
-        const moroccoLocked = isMoroccoManualLock({
-          pref: normalizeCountryCode(prev.prefCountry),
-          detected: normalizeCountryCode(prev.detectedCountry),
-          displayCurrency: prev.displayCurrency,
-          geoManual: prev.geoManual,
-          geoWeak: prev.weakDetection === true,
-          geoResolved: prev.geoResolved,
-        });
+        const moroccoLocked =
+          prev.geoLocked ||
+          isMoroccoManualLock({
+            pref: normalizeCountryCode(prev.prefCountry),
+            detected: normalizeCountryCode(prev.detectedCountry),
+            displayCurrency: prev.displayCurrency,
+            geoManual: prev.geoManual,
+            geoLocked: Boolean(prev.geoLocked),
+            geoWeak: prev.weakDetection === true,
+            geoResolved: prev.geoResolved,
+          });
         const shouldAutoApply =
           !prev.geoManual &&
           !moroccoLocked &&
@@ -211,7 +216,11 @@ export function RegionalPreferencesProvider({ children, initial }: Props) {
           data.permanent === true &&
           !data.weakDetection;
 
-        if (data.weakDetection && !prev.geoManual) {
+        if (data.weakDetection && !prev.geoManual && !moroccoLocked) {
+          if (normalizeCountryCode(country) === "FR" || normalizeCountryCode(country) === "EU") {
+            geoLogBrowser("ignore weak FR/EU detect — Morocco-first", { country });
+            return prev;
+          }
           geoLogBrowser("weak detection — session hint only, no pref lock", { country });
           return {
             ...prev,

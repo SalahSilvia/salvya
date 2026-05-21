@@ -10,7 +10,9 @@ export const MOROCCO_CURRENCY = "MAD";
 export const CASABLANCA_TIMEZONE = "Africa/Casablanca";
 
 export function isMoroccoManualLock(state: GeoCookieState): boolean {
-  return state.geoManual && state.pref === MOROCCO_COUNTRY;
+  return Boolean(
+    state.geoLocked || (state.geoManual && state.pref === MOROCCO_COUNTRY),
+  );
 }
 
 export function isMoroccoPreference(state: GeoCookieState): boolean {
@@ -129,10 +131,15 @@ export function enforceMoroccoManualSelection(input: {
   country: string;
   currency: CurrencyCode;
   manual?: boolean;
-}): { country: string; currency: CurrencyCode; manual?: boolean } {
+}): { country: string; currency: CurrencyCode; manual?: boolean; geoLocked?: boolean } {
   const code = normalizeCountryCode(input.country);
   if (input.manual && code === MOROCCO_COUNTRY) {
-    return { country: MOROCCO_COUNTRY, currency: MOROCCO_CURRENCY, manual: true };
+    return {
+      country: MOROCCO_COUNTRY,
+      currency: MOROCCO_CURRENCY,
+      manual: true,
+      geoLocked: true,
+    };
   }
   return input;
 }

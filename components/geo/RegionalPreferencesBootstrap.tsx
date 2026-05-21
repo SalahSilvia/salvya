@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { COOKIE_GEO_LOCKED } from "@/lib/geo/constants";
 import { useRegionalPreferences } from "@/components/geo/RegionalPreferencesProvider";
 
 const MIN_SYNC_INTERVAL_MS = 30_000;
@@ -17,6 +18,12 @@ export function RegionalPreferencesBootstrap() {
 
   useEffect(() => {
     const runSync = async () => {
+      if (typeof document !== "undefined") {
+        const locked = document.cookie.match(
+          new RegExp(`(?:^|; )${COOKIE_GEO_LOCKED.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}=1`),
+        );
+        if (locked) return;
+      }
       if (syncingRef.current) return;
       const now = Date.now();
       if (mountedRef.current && now - lastSyncRef.current < MIN_SYNC_INTERVAL_MS) {

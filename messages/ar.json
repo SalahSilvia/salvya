@@ -45,6 +45,7 @@
     "stay": "البقاء هنا",
     "currencyTitle": "عملة العرض",
     "chargeNote": "الدفع باليورو. الأسعار المعروضة تتبع منطقتك.",
+    "moroccoStorefrontHint": "الأسعار بالدرهم المغربي · التوصيل إلى المغرب متاح",
     "mismatchToast": "الشبكة تشير إلى {detected}. الأسعار تبقى على {selected}.",
     "mismatchDismiss": "حسناً"
   },

@@ -3,11 +3,13 @@ import { parseDisplayCurrency, type CurrencyCode } from "@/lib/currency/config";
 import {
   COOKIE_DETECTED_COUNTRY,
   COOKIE_DISPLAY_CURRENCY,
+  COOKIE_GEO_LOCKED,
   COOKIE_GEO_MANUAL,
   COOKIE_GEO_RESOLVED,
   COOKIE_GEO_WEAK,
   COOKIE_PREF_COUNTRY,
   GEO_COOKIE_MAX_AGE,
+  GEO_LOCKED_STORAGE_KEY,
   GEO_WEAK_COOKIE_MAX_AGE,
 } from "@/lib/geo/constants";
 import type { GeoConfidence } from "@/lib/geo/types";
@@ -15,7 +17,11 @@ import { currencyForCountry, geoProfileForCountry, normalizeCountryCode } from "
 import { readGeoCookieState } from "@/lib/geo/cookie-state";
 import { selectedCountryFromCookieState } from "@/lib/geo/effective-region";
 import { buildGeoMismatchNotice } from "@/lib/geo/geo-consistency";
-import { enforceMoroccoManualSelection, MOROCCO_COUNTRY } from "@/lib/geo/morocco-stability";
+import {
+  enforceMoroccoManualSelection,
+  MOROCCO_COUNTRY,
+  MOROCCO_CURRENCY,
+} from "@/lib/geo/morocco-stability";
 
 export const REGIONAL_PREFERENCES_EVENT = "salvya:regional-preferences-updated";
 
@@ -26,6 +32,10 @@ export type RegionalPreferencesSnapshot = {
   geoResolved: boolean;
   /** User explicitly chose country in menu — skip auto VPN switches. */
   geoManual: boolean;
+  /** Strong Morocco lock — never downgrade to EUR on edge misroutes. */
+  geoLocked?: boolean;
+  /** SSR hint for subtle Morocco UX banner. */
+  moroccoLikely?: boolean;
   weakDetection?: boolean;
   confidence?: GeoConfidence | null;
   /** Server computed region — client persists via /api/geo/detect (no cookies in RSC). */
@@ -41,6 +51,7 @@ export function pricingCountryFromSnapshot(snapshot: RegionalPreferencesSnapshot
     detected: normalizeCountryCode(snapshot.detectedCountry),
     displayCurrency: snapshot.displayCurrency,
     geoManual: snapshot.geoManual,
+    geoLocked: snapshot.geoLocked === true,
     geoWeak: snapshot.weakDetection === true,
     geoResolved: snapshot.geoResolved,
   });
@@ -55,8 +66,11 @@ export function snapshotFromCookies(
   const selected = selectedCountryFromCookieState(cookieState);
   const prefCountry = prefOnly ?? selected;
   const explicitCurrency = cookieState.displayCurrency;
+  const pricingCode = selected ?? detected ?? MOROCCO_COUNTRY;
   const displayCurrency =
-    explicitCurrency ?? currencyForCountry(selected ?? detected) ?? "EUR";
+    explicitCurrency ??
+    (pricingCode === MOROCCO_COUNTRY ? MOROCCO_CURRENCY : currencyForCountry(pricingCode)) ??
+    MOROCCO_CURRENCY;
 
   return {
     detectedCountry: detected,
@@ -64,6 +78,8 @@ export function snapshotFromCookies(
     displayCurrency,
     geoResolved,
     geoManual,
+    geoLocked: cookieState.geoLocked,
+    moroccoLikely: pricingCode === MOROCCO_COUNTRY || displayCurrency === MOROCCO_CURRENCY,
     weakDetection,
   };
 }
@@ -144,6 +160,7 @@ export function buildGeoMismatchFromSnapshot(
       detected: normalizeCountryCode(snapshot.detectedCountry),
       displayCurrency: snapshot.displayCurrency,
       geoManual: snapshot.geoManual,
+      geoLocked: snapshot.geoLocked === true,
       geoWeak: snapshot.weakDetection === true,
       geoResolved: snapshot.geoResolved,
     },
@@ -184,6 +201,12 @@ export function persistGeoChoice(opts: {
   if (normalized.manual) {
     setClientCookie(COOKIE_GEO_MANUAL, "1");
   }
+  if (normalized.geoLocked || (normalized.manual && normalized.country === MOROCCO_COUNTRY)) {
+    setClientCookie(COOKIE_GEO_LOCKED, "1");
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(GEO_LOCKED_STORAGE_KEY, "1");
+    }
+  }
   if (opts.resolved !== false) {
     setClientCookie(COOKIE_GEO_RESOLVED, "1");
   }
@@ -207,10 +230,16 @@ export function clearRegionalPreferenceCookies() {
     COOKIE_GEO_RESOLVED,
     COOKIE_PREF_COUNTRY,
     COOKIE_GEO_MANUAL,
+    COOKIE_GEO_LOCKED,
     COOKIE_GEO_WEAK,
   ];
   for (const name of names) {
     document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax`;
+  }
+  try {
+    localStorage.removeItem(GEO_LOCKED_STORAGE_KEY);
+  } catch {
+    /* ignore */
   }
 }
 
@@ -230,14 +259,27 @@ export function readClientRegionalPreferences(): RegionalPreferencesSnapshot {
     return {
       detectedCountry: null,
       prefCountry: null,
-      displayCurrency: "EUR",
+      displayCurrency: MOROCCO_CURRENCY,
       geoResolved: false,
       geoManual: false,
+      moroccoLikely: true,
     };
   }
   const get = (name: string) => {
     const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
     return match ? decodeURIComponent(match[1]) : undefined;
   };
-  return snapshotFromCookies(get);
+  const snap = snapshotFromCookies(get);
+  if (typeof localStorage !== "undefined" && localStorage.getItem(GEO_LOCKED_STORAGE_KEY) === "1") {
+    return {
+      ...snap,
+      prefCountry: MOROCCO_COUNTRY,
+      displayCurrency: MOROCCO_CURRENCY,
+      geoLocked: true,
+      geoManual: true,
+      moroccoLikely: true,
+      weakDetection: false,
+    };
+  }
+  return snap;
 }

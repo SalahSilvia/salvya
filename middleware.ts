@@ -8,7 +8,10 @@ import {
 } from "@/lib/i18n/locale-free-paths";
 import {
   COOKIE_DETECTED_COUNTRY,
+  COOKIE_DISPLAY_CURRENCY,
+  COOKIE_GEO_LOCKED,
   COOKIE_GEO_MANUAL,
+  COOKIE_GEO_RESOLVED,
   COOKIE_PREF_COUNTRY,
   GEO_COOKIE_MAX_AGE,
 } from "@/lib/geo/constants";
@@ -33,7 +36,8 @@ function attachDetectedCountryCookie(request: NextRequest, response: NextRespons
 
   const pref = normalizeCountryCode(request.cookies.get(COOKIE_PREF_COUNTRY)?.value);
   const geoManual = request.cookies.get(COOKIE_GEO_MANUAL)?.value === "1";
-  if (geoManual && pref === "MA") {
+  const geoLocked = request.cookies.get(COOKIE_GEO_LOCKED)?.value === "1";
+  if (geoLocked || (geoManual && pref === "MA")) {
     return response;
   }
 
@@ -64,11 +68,31 @@ function localizeRedirectLocation(request: NextRequest, location: string): strin
   }
 }
 
+function attachMoroccoEntryCookies(response: NextResponse): NextResponse {
+  const base = {
+    path: "/",
+    maxAge: GEO_COOKIE_MAX_AGE,
+    sameSite: "lax" as const,
+    secure: true,
+  };
+  response.cookies.set(COOKIE_PREF_COUNTRY, "MA", base);
+  response.cookies.set(COOKIE_DISPLAY_CURRENCY, "MAD", base);
+  response.cookies.set(COOKIE_GEO_RESOLVED, "1", base);
+  response.cookies.set(COOKIE_GEO_LOCKED, "1", base);
+  response.cookies.set(COOKIE_GEO_MANUAL, "1", base);
+  return response;
+}
+
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   if (isStaticMiddlewareBypass(pathname)) {
     return NextResponse.next({ request });
+  }
+
+  if (pathname === "/ma" || pathname.startsWith("/ma/")) {
+    const target = new URL("/fr/shop", request.url);
+    return attachMoroccoEntryCookies(safeRedirect(request, target));
   }
 
   const canonical = apexToWwwRedirect(request);

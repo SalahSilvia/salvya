@@ -47,6 +47,7 @@ describe("morocco-stability", () => {
         detected: "FR",
         displayCurrency: "MAD",
         geoManual: true,
+        geoLocked: true,
         geoWeak: false,
         geoResolved: true,
       }),
@@ -59,6 +60,7 @@ describe("morocco-stability", () => {
       detected: "FR",
       displayCurrency: "EUR",
       geoManual: true,
+      geoLocked: false,
       geoWeak: true,
       geoResolved: false,
     });

@@ -1,22 +1,18 @@
 import type { AppLocale } from "@/i18n/routing";
 import { defaultLocale, isAppLocale } from "@/i18n/routing";
 import { parseDisplayCurrency, type CurrencyCode } from "@/lib/currency/config";
-import { currencyForCountry, geoProfileForCountry, normalizeCountryCode } from "@/lib/geo/country-map";
+import { geoProfileForCountry, normalizeCountryCode } from "@/lib/geo/country-map";
 import type { GeoCookieState } from "@/lib/geo/cookie-state";
 
 export type { GeoCookieState };
 import { detectCountryFromHeaders } from "@/lib/geo/detect-country";
-import {
-  isMoroccoManualLock,
-  isMoroccoPreference,
-  MOROCCO_COUNTRY,
-  MOROCCO_CURRENCY,
-} from "@/lib/geo/morocco-stability";
+import { MOROCCO_COUNTRY, MOROCCO_CURRENCY } from "@/lib/geo/morocco-stability";
+import { resolveRegionSync } from "@/lib/geo/resolve-region";
 import { countryToMarketCode, marketToCurrency } from "@/lib/market/country-to-market";
 import type { MarketCode } from "@/lib/market/types";
 
-export const DEFAULT_MARKET_COUNTRY = null;
-export const DEFAULT_MARKET_CODE: MarketCode = "EU";
+export const DEFAULT_MARKET_COUNTRY = MOROCCO_COUNTRY;
+export const DEFAULT_MARKET_CODE: MarketCode = "MA";
 
 /**
  * Selected country priority (sync, cookie/header only):
@@ -26,7 +22,9 @@ export const DEFAULT_MARKET_CODE: MarketCode = "EU";
  * 4. Edge header (live geo hint)
  */
 export function selectedCountryFromCookieState(state: GeoCookieState, edgeCountry?: string | null): string | null {
+  if (state.geoLocked || (state.geoManual && state.pref === MOROCCO_COUNTRY)) return MOROCCO_COUNTRY;
   if (state.geoManual && state.pref) return state.pref;
+  if (state.pref === MOROCCO_COUNTRY) return MOROCCO_COUNTRY;
   if (state.pref) return state.pref;
   if (state.geoWeak) return null;
   if (state.geoResolved && state.detected) return state.detected;
@@ -75,48 +73,37 @@ export function buildEffectiveRegionSync(opts: {
   profileLocale?: AppLocale | null;
   profileCurrency?: CurrencyCode | null;
 }): EffectiveRegionSnapshot {
-  const { cookieState } = opts;
   const edge = opts.headers ? detectCountryFromHeaders(opts.headers) : null;
   const acceptLanguage = opts.acceptLanguage ?? opts.headers?.get("accept-language") ?? null;
 
-  let selected =
-    normalizeCountryCode(opts.profileCountry) ??
-    selectedCountryFromCookieState(cookieState, edge);
-
-  if (isMoroccoManualLock(cookieState) || isMoroccoPreference(cookieState)) {
-    selected = MOROCCO_COUNTRY;
-  } else if (
-    !cookieState.geoManual &&
-    cookieState.displayCurrency === MOROCCO_CURRENCY &&
-    selected === "FR"
-  ) {
-    selected = MOROCCO_COUNTRY;
+  if (opts.profileCountry) {
+    const code = normalizeCountryCode(opts.profileCountry) ?? MOROCCO_COUNTRY;
+    const profile = geoProfileForCountry(code, acceptLanguage);
+    return {
+      selectedCountry: code,
+      detectedCountry: opts.cookieState.detected ?? edge,
+      marketCode: countryToMarketCode(code),
+      chargeCurrency: marketToCurrency(countryToMarketCode(code)),
+      displayCurrency:
+        opts.profileCurrency ??
+        (code === MOROCCO_COUNTRY ? MOROCCO_CURRENCY : profile.currency),
+      locale: opts.profileLocale ?? profile.locale,
+    };
   }
 
-  const marketCode = countryToMarketCode(selected);
-  const chargeCurrency = marketToCurrency(marketCode);
-  let displayCurrency =
-    opts.profileCurrency ??
-    cookieState.displayCurrency ??
-    currencyForCountry(selected) ??
-    chargeCurrency;
-  if (selected === MOROCCO_COUNTRY || isMoroccoManualLock(cookieState)) {
-    displayCurrency = MOROCCO_CURRENCY;
-  }
-
-  const locale = resolveLocaleFromSignals(
-    opts.explicitLocale,
-    opts.profileLocale ?? null,
+  const region = resolveRegionSync({
+    cookieState: opts.cookieState,
+    headers: opts.headers,
     acceptLanguage,
-    selected,
-  );
+    edgeCountry: edge,
+  });
 
   return {
-    selectedCountry: selected,
-    detectedCountry: cookieState.detected ?? edge,
-    marketCode,
-    chargeCurrency,
-    displayCurrency: parseDisplayCurrency(displayCurrency) ?? chargeCurrency,
-    locale,
+    selectedCountry: region.country,
+    detectedCountry: opts.cookieState.detected ?? edge,
+    marketCode: region.marketCode,
+    chargeCurrency: marketToCurrency(region.marketCode),
+    displayCurrency: region.currency,
+    locale: opts.explicitLocale ?? region.locale,
   };
 }

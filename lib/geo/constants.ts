@@ -16,6 +16,12 @@ export const COOKIE_GEO_MANUAL = "salvya_geo_manual";
 /** Weak timezone/locale-only detection (session-scoped, no pref lock). */
 export const COOKIE_GEO_WEAK = "salvya_geo_weak";
 
+/** Strong Morocco lock — never override MA/MAD with FR/EU edge. */
+export const COOKIE_GEO_LOCKED = "salvya_geo_locked";
+
+/** Client mirror of geo lock (survives cookie clears in same browser). */
+export const GEO_LOCKED_STORAGE_KEY = "salvya_geo_locked";
+
 export const GEO_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 /** Short-lived cookies for weak detection (4h). */

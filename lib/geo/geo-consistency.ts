@@ -1,6 +1,7 @@
 import type { NextResponse } from "next/server";
 import {
   COOKIE_DISPLAY_CURRENCY,
+  COOKIE_GEO_LOCKED,
   COOKIE_GEO_MANUAL,
   COOKIE_GEO_RESOLVED,
   COOKIE_GEO_WEAK,
@@ -35,6 +36,15 @@ function cloneState(state: GeoCookieState): GeoCookieState {
 export function repairGeoCookieState(state: GeoCookieState): GeoConsistencyRepair {
   const next = cloneState(state);
   const repairs: string[] = [];
+
+  if (next.geoLocked) {
+    next.pref = MOROCCO_COUNTRY;
+    next.displayCurrency = MOROCCO_CURRENCY;
+    next.geoManual = true;
+    next.geoWeak = false;
+    next.geoResolved = true;
+    repairs.push("geo_locked → force MA + MAD");
+  }
 
   if (isMoroccoManualLock(next) || (next.geoManual && next.pref === MOROCCO_COUNTRY)) {
     if (next.displayCurrency !== MOROCCO_CURRENCY) {
@@ -99,6 +109,9 @@ export function applyGeoConsistencyRepairToResponse(
   if (state.geoManual) {
     res.cookies.set(COOKIE_GEO_MANUAL, "1", cookieBase);
   }
+  if (state.geoLocked) {
+    res.cookies.set(COOKIE_GEO_LOCKED, "1", cookieBase);
+  }
   res.cookies.set(COOKIE_GEO_WEAK, "", { ...cookieBase, maxAge: 0 });
 
   if (isGeoDebugEnabled()) {
@@ -121,6 +134,7 @@ export function persistGeoConsistencyRepairClient(repair: GeoConsistencyRepair):
   if (state.displayCurrency) write(COOKIE_DISPLAY_CURRENCY, state.displayCurrency);
   if (state.geoResolved) write(COOKIE_GEO_RESOLVED, "1");
   if (state.geoManual) write(COOKIE_GEO_MANUAL, "1");
+  if (state.geoLocked) write(COOKIE_GEO_LOCKED, "1");
   clear(COOKIE_GEO_WEAK);
 
   if (isGeoDebugEnabled()) {

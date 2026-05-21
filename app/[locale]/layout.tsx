@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { hasLocale } from "next-intl";
 import { LocaleDocumentAttributes } from "@/components/i18n/LocaleDocumentAttributes";
+import { GeoSSRRegionBridge } from "@/components/geo/GeoSSRRegionBridge";
 import { LocaleProviders } from "@/components/layout/LocaleProviders";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { isRtlLocale, routing, type AppLocale } from "@/i18n/routing";
@@ -13,13 +14,33 @@ import { getAcceptLanguage, getRegionalPreferences } from "@/lib/geo/preferences
 
 export async function generateMetadata(): Promise<Metadata> {
   const base = rootSiteMetadata();
-  const { faviconUrl } = await getSiteBranding();
+  const [{ faviconUrl }, regionalPrefs] = await Promise.all([
+    getSiteBranding(),
+    getRegionalPreferences(),
+  ]);
+  const morocco = regionalPrefs.prefCountry === "MA" || regionalPrefs.displayCurrency === "MAD";
   return {
     ...base,
     icons: {
       icon: [{ url: faviconUrl, type: "image/png" }],
       apple: [{ url: faviconUrl, type: "image/png" }],
       shortcut: [faviconUrl],
+    },
+    ...(morocco
+      ? {
+          other: {
+            "geo.region": "MA",
+            "geo.placename": "Morocco",
+          },
+        }
+      : {}),
+    alternates: {
+      ...base.alternates,
+      languages: {
+        ...(base.alternates?.languages ?? {}),
+        "fr-MA": "https://www.salvyastore.com/fr/shop",
+        "ar-MA": "https://www.salvyastore.com/ar/shop",
+      },
     },
   };
 }
@@ -52,6 +73,10 @@ export default async function LocaleLayout({ children, params }: Props) {
 
   return (
     <div className={fontClass}>
+      <GeoSSRRegionBridge
+        country={regionalPrefs.prefCountry ?? "MA"}
+        currency={regionalPrefs.displayCurrency}
+      />
       <LocaleDocumentAttributes locale={locale} />
       <JsonLd data={[organizationJsonLd(), websiteJsonLd(locale)]} />
       <LocaleProviders

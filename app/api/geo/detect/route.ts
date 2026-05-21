@@ -108,6 +108,7 @@ export async function GET(request: NextRequest) {
     country: profile.countryCode,
     currency: profile.currency,
     geoManual,
+    geoLocked: moroccoLocked || cookieState.geoLocked,
     weakDetection: resolution.weakDetection,
     source: resolution.source,
     writePref: writePref && (applied || geoManual || !request.cookies.get(COOKIE_GEO_RESOLVED)),

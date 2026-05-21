@@ -8,6 +8,7 @@ function state(partial: Partial<GeoCookieState>): GeoCookieState {
     detected: null,
     displayCurrency: null,
     geoManual: false,
+    geoLocked: false,
     geoWeak: false,
     geoResolved: false,
     ...partial,

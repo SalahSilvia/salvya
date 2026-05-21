@@ -52,6 +52,7 @@
     "detectedLine": "Detected location: {flag} {country}",
     "detectedUnknown": "Location not detected yet — enable network access or set country below.",
     "chargeNote": "Checkout is charged in EUR. Prices shown follow your selected region.",
+    "moroccoStorefrontHint": "Prices in Moroccan Dirham · Delivery in Morocco available",
     "mismatchToast": "Network location shows {detected}. Prices stay on {selected}.",
     "mismatchDismiss": "Got it"
   },

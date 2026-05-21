@@ -2,6 +2,7 @@ import { parseDisplayCurrency, type CurrencyCode } from "@/lib/currency/config";
 import {
   COOKIE_DETECTED_COUNTRY,
   COOKIE_DISPLAY_CURRENCY,
+  COOKIE_GEO_LOCKED,
   COOKIE_GEO_MANUAL,
   COOKIE_GEO_RESOLVED,
   COOKIE_GEO_WEAK,
@@ -15,6 +16,7 @@ export type GeoCookieState = {
   detected: string | null;
   displayCurrency: CurrencyCode | null;
   geoManual: boolean;
+  geoLocked: boolean;
   geoWeak: boolean;
   geoResolved: boolean;
 };
@@ -27,6 +29,7 @@ export function readGeoCookieState(
     detected: normalizeCountryCode(cookieGet(COOKIE_DETECTED_COUNTRY)),
     displayCurrency: parseDisplayCurrency(cookieGet(COOKIE_DISPLAY_CURRENCY)),
     geoManual: cookieGet(COOKIE_GEO_MANUAL) === "1",
+    geoLocked: cookieGet(COOKIE_GEO_LOCKED) === "1",
     geoWeak: cookieGet(COOKIE_GEO_WEAK) === "1",
     geoResolved: cookieGet(COOKIE_GEO_RESOLVED) === "1",
   };

@@ -52,6 +52,7 @@
     "detectedLine": "Position détectée : {flag} {country}",
     "detectedUnknown": "Position non détectée — choisissez votre pays ci-dessous.",
     "chargeNote": "Le paiement est en EUR. Les prix affichés suivent votre région.",
+    "moroccoStorefrontHint": "Prix en dirham marocain · Livraison au Maroc disponible",
     "mismatchToast": "Le réseau indique {detected}. Les prix restent en {selected}.",
     "mismatchDismiss": "Compris"
   },

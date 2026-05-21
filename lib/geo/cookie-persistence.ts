@@ -2,6 +2,7 @@ import type { NextResponse } from "next/server";
 import {
   COOKIE_DETECTED_COUNTRY,
   COOKIE_DISPLAY_CURRENCY,
+  COOKIE_GEO_LOCKED,
   COOKIE_GEO_MANUAL,
   COOKIE_GEO_RESOLVED,
   COOKIE_GEO_WEAK,
@@ -25,6 +26,7 @@ export function applyGeoCookies(
     country: string;
     currency: CurrencyCode;
     geoManual: boolean;
+    geoLocked?: boolean;
     weakDetection: boolean;
     source: GeoDetectSource | null;
     writePref: boolean;
@@ -74,6 +76,9 @@ export function applyGeoCookies(
 
   if (opts.geoManual) {
     res.cookies.set(COOKIE_GEO_MANUAL, "1", { ...baseOpts, maxAge: GEO_COOKIE_MAX_AGE });
+  }
+  if (opts.geoLocked || (opts.geoManual && opts.country === "MA")) {
+    res.cookies.set(COOKIE_GEO_LOCKED, "1", { ...baseOpts, maxAge: GEO_COOKIE_MAX_AGE });
   }
 
   if (isGeoDebugEnabled()) {
