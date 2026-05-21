@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { AccountBackButton } from "@/components/account/AccountBackButton";
 import { AddressBookPanel } from "@/components/account/AddressBookPanel";
 import { AccountPreferencesPanel } from "@/components/account/AccountPreferencesPanel";
@@ -34,6 +35,7 @@ function SectionCard({
 }
 
 export function AccountSettingsView() {
+  const t = useTranslations("account");
   const router = useRouter();
   const { user } = useSupabaseUser();
   const [prefs, setPrefs] = useState<AccountPrefsV1 | null>(null);
@@ -77,78 +79,55 @@ export function AccountSettingsView() {
         <div className="mx-auto flex h-14 max-w-xl items-center justify-between gap-3 px-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]">
           <AccountBackButton fallbackHref="/menu" />
           <span className="rounded-full border border-white/[0.1] bg-white/[0.05] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white/50">
-            Settings
+            {t("settings")}
           </span>
         </div>
       </header>
 
       <main className="relative z-[1] mx-auto max-w-xl space-y-8 px-[max(1rem,env(safe-area-inset-left))] pb-28 pr-[max(1rem,env(safe-area-inset-right))] pt-8 sm:pt-10">
         <div>
-          <h1 className="text-[1.65rem] font-semibold leading-tight tracking-[-0.04em] sm:text-[1.85rem]">Account settings</h1>
-          <p className="mt-3 max-w-md text-[14px] leading-relaxed text-white/48">
-            Profile, shipping book, preferences, and security — tuned for Salvya checkout and culture drops.
-          </p>
+          <h1 className="text-[1.65rem] font-semibold leading-tight tracking-[-0.04em] sm:text-[1.85rem]">{t("settingsPageTitle")}</h1>
+          <p className="mt-3 max-w-md text-[14px] leading-relaxed text-white/48">{t("settingsPageIntro")}</p>
         </div>
 
-        <SectionCard
-          eyebrow="Personal"
-          title="Your details"
-          description="Name, contact, and profile info — saved to your Salvya account and used at checkout."
-        >
+        <SectionCard eyebrow={t("sectionPersonal")} title={t("settingsYourDetails")} description={t("personalDetailsDesc")}>
           <PersonalSettingsForm user={user} />
         </SectionCard>
 
-        <SectionCard
-          eyebrow="Shipping"
-          title="Addresses"
-          description="Save multiple destinations and choose one at checkout. Only one default applies — we reset the others automatically."
-        >
+        <SectionCard eyebrow={t("sectionShipping")} title={t("settingsAddresses")} description={t("addressesDesc")}>
           <AddressBookPanel />
         </SectionCard>
 
-        <SectionCard
-          eyebrow="Experience"
-          title="Preferences"
-          description="Language and communications — tuned for how you browse and hear from Salvya."
-        >
+        <SectionCard eyebrow={t("sectionExperience")} title={t("settingsPreferences")} description={t("preferencesDesc")}>
           <AccountPreferencesPanel prefs={prefsSafe} onChange={persistPrefs} />
         </SectionCard>
 
-        <SectionCard eyebrow="Access" title="Security" description="Protect your Salvya identity and sessions.">
+        <SectionCard eyebrow={t("sectionAccess")} title={t("securityTitle")} description={t("securityDesc")}>
           <div className="flex flex-col gap-3">
             <Link
               href="/update-password"
               className="inline-flex min-h-[46px] items-center justify-center rounded-xl border border-white/[0.14] bg-white/[0.06] px-4 text-[14px] font-semibold text-white/88 transition-colors hover:bg-white/[0.1]"
             >
-              Change password
+              {t("changePassword")}
             </Link>
             <button
               type="button"
               onClick={signOut}
               className="inline-flex min-h-[46px] items-center justify-center rounded-xl bg-white px-4 text-[14px] font-semibold text-slate-950 transition-opacity hover:opacity-95"
             >
-              Sign out on this device
+              {t("signOutDevice")}
             </button>
-            <p className="text-[12px] leading-relaxed text-white/38">
-              Sign out everywhere will arrive with device/session management.
-            </p>
+            <p className="text-[12px] leading-relaxed text-white/38">{t("signOutEverywhereHint")}</p>
           </div>
         </SectionCard>
 
-        <SectionCard
-          eyebrow="Irreversible"
-          title="Danger zone"
-          description="Deactivate or permanently delete your account. We do not keep a restorable personal backup after you proceed."
-        >
-          <p className="text-[14px] leading-relaxed text-white/48">
-            You can temporarily deactivate sign-in or permanently erase your Salvya account and linked personal data.
-            Order records may be retained in anonymised form where the law requires it.
-          </p>
+        <SectionCard eyebrow={t("sectionIrreversible")} title={t("settingsDangerZone")} description={t("dangerZoneSectionDesc")}>
+          <p className="text-[14px] leading-relaxed text-white/48">{t("dangerZoneDesc")}</p>
           <Link
             href="/account/danger-zone"
             className="mt-4 inline-flex min-h-[46px] items-center justify-center rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 text-[14px] font-semibold text-rose-100/95 transition-colors hover:border-rose-400/40 hover:bg-rose-500/15"
           >
-            Delete or deactivate account →
+            {t("deleteOrDeactivate")}
           </Link>
         </SectionCard>
       </main>

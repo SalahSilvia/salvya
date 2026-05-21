@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useId, useRef, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { AuthDaylight } from "@/components/auth/AuthDaylight";
 import { AuthTopBar } from "@/components/auth/AuthTopBar";
@@ -46,6 +47,7 @@ function CheckRow({ children }: { children: React.ReactNode }) {
 }
 
 export default function ForgotPasswordPageClient() {
+  const t = useTranslations("auth");
   const searchParams = useSearchParams();
   const reduceMotion = useReducedMotion();
   const emailId = useId();
@@ -71,30 +73,28 @@ export default function ForgotPasswordPageClient() {
     setError(null);
     const trimmed = email.trim();
     if (!trimmed) {
-      setError("Enter the email address you use to sign in to Salvya.");
+      setError(t("forgotEmailRequired"));
       return;
     }
     if (!trimmed.includes("@")) {
-      setError("Enter a valid email address.");
+      setError(t("forgotEmailInvalid"));
       return;
     }
 
     if (!isSupabaseConfigured()) {
-      setError(
-        "Sign-in is not configured on this environment. Add Supabase keys to salvya.local.env (see .env.example), restart the server, and try again.",
-      );
+      setError(t("supabaseEnvHint"));
       return;
     }
 
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
-      setError("Could not connect to authentication. Check your environment variables.");
+      setError(t("authConnectFailed"));
       return;
     }
 
     const redirectTo = buildPasswordRecoveryRedirectTo();
     if (!redirectTo) {
-      setError("Could not build a secure reset link. Reload this page and try again.");
+      setError(t("resetLinkBuildFailed"));
       return;
     }
 
@@ -120,7 +120,7 @@ export default function ForgotPasswordPageClient() {
 
   return (
     <AuthDaylight>
-      <AuthTopBar backHref={loginHref("/")} backLabel="Sign in" pill="Reset password" variant="day" />
+      <AuthTopBar backHref={loginHref("/")} backLabel={t("signIn")} pill={t("resetPassword")} variant="day" />
 
       <main className="min-h-dvh pt-[calc(3.5rem+env(safe-area-inset-top))] lg:grid lg:min-h-dvh lg:grid-cols-[minmax(0,1fr)_min(100%,440px)] xl:grid-cols-[minmax(0,1fr)_460px]">
         <aside className="relative hidden flex-col justify-between border-neutral-200/70 bg-gradient-to-br from-white/90 via-blue-50/40 to-sky-50/30 p-10 backdrop-blur-[2px] lg:flex xl:p-14">
@@ -130,18 +130,15 @@ export default function ForgotPasswordPageClient() {
             transition={{ duration: 0.5, ease }}
             className="max-w-md"
           >
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-700/80">Account recovery</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-700/80">{t("accountRecovery")}</p>
             <h2 className="mt-4 text-balance text-[clamp(1.75rem,3vw,2.35rem)] font-bold leading-[1.12] tracking-[-0.04em] text-neutral-950">
-              Get back into your Salvya account.
+              {t("forgotHeroTitle")}
             </h2>
-            <p className="mt-4 text-[15px] leading-relaxed text-neutral-600">
-              We send a secure, single-use link to your inbox. Open it on this device to choose a new password — the link
-              expires after a short time for your safety.
-            </p>
+            <p className="mt-4 text-[15px] leading-relaxed text-neutral-600">{t("forgotHeroBody")}</p>
             <ul className="mt-10 space-y-4">
-              <CheckRow>Check spam or promotions if nothing arrives within a few minutes.</CheckRow>
-              <CheckRow>Use the newest email if you requested more than one reset.</CheckRow>
-              <CheckRow>Still stuck? Visit Help or create an account if you are new to Salvya.</CheckRow>
+              <CheckRow>{t("forgotBullet1")}</CheckRow>
+              <CheckRow>{t("forgotBullet2")}</CheckRow>
+              <CheckRow>{t("forgotBullet3")}</CheckRow>
             </ul>
           </motion.div>
           <motion.div
@@ -151,22 +148,20 @@ export default function ForgotPasswordPageClient() {
             className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-neutral-200/60 pt-8 text-[13px] text-neutral-500"
           >
             <Link href="/help-center" prefetch={false} className="font-semibold text-blue-700 hover:text-blue-800">
-              Help center
+              {t("helpCenter")}
             </Link>
             <span className="text-neutral-300" aria-hidden>
               ·
             </span>
             <Link href={registerHref("/")} prefetch={false} className="font-semibold text-neutral-700 hover:text-neutral-950">
-              Create account
+              {t("createAccount")}
             </Link>
           </motion.div>
         </aside>
 
         <div className="flex flex-col px-[max(1rem,env(safe-area-inset-left))] pb-[max(2rem,env(safe-area-inset-bottom))] pr-[max(1rem,env(safe-area-inset-right))] lg:border-l lg:border-neutral-200/80 lg:px-8 lg:py-10 xl:px-12">
           <motion.div className="lg:hidden">
-            <p className="pt-6 text-[13px] leading-relaxed text-neutral-600">
-              Enter your account email. We will send a link to set a new password.
-            </p>
+            <p className="pt-6 text-[13px] leading-relaxed text-neutral-600">{t("forgotMobileIntro")}</p>
           </motion.div>
 
           <div className="flex flex-1 flex-col justify-center py-10 lg:py-6">
@@ -188,12 +183,10 @@ export default function ForgotPasswordPageClient() {
                     />
                   </motion.div>
                   <h1 className="mt-6 text-[1.65rem] font-bold leading-tight tracking-[-0.04em] text-neutral-950 sm:text-[1.85rem]">
-                    Reset password
+                    {t("resetPassword")}
                   </h1>
                   <p className="mt-2 max-w-[22rem] text-[14px] leading-relaxed text-neutral-500 sm:text-[15px]">
-                    {sent
-                      ? "If an account exists for that email, a reset link is on its way."
-                      : "Use the same email you sign in with. We never tell outsiders whether an address is registered."}
+                    {sent ? t("resetSentShort") : t("resetPrivacyNote")}
                   </p>
                 </div>
 
@@ -210,16 +203,12 @@ export default function ForgotPasswordPageClient() {
                         role="status"
                         className="rounded-xl border border-emerald-200/90 bg-emerald-50/95 px-4 py-4 text-left shadow-sm"
                       >
-                        <p className="text-[13px] font-semibold text-emerald-950">Check your inbox</p>
-                        <p className="mt-2 text-[13px] leading-relaxed text-emerald-900/90">
-                          We sent instructions to{" "}
-                          <span className="font-semibold text-emerald-950">{sentTo}</span>. Open the link to choose a new
-                          password.
-                        </p>
+                        <p className="text-[13px] font-semibold text-emerald-950">{t("checkInbox")}</p>
+                        <p className="mt-2 text-[13px] leading-relaxed text-emerald-900/90">{t("resetSentTo", { email: sentTo })}</p>
                         <ol className="mt-4 list-decimal space-y-2 pl-5 text-[12px] leading-relaxed text-emerald-900/85">
-                          <li>Open the email from Salvya (check spam).</li>
-                          <li>Tap <strong className="font-semibold">Reset password</strong> in the message.</li>
-                          <li>Pick a new password on the Salvya page that opens.</li>
+                          <li>{t("resetStepOpenEmail")}</li>
+                          <li>{t("resetStepTapReset")}</li>
+                          <li>{t("resetStepPickPassword")}</li>
                         </ol>
                       </motion.div>
 
@@ -229,7 +218,7 @@ export default function ForgotPasswordPageClient() {
                         disabled={busy}
                         className="w-full text-center text-[13px] font-semibold text-blue-600 transition-colors hover:text-blue-700 disabled:opacity-50"
                       >
-                        {busy ? "Sending again…" : "Did not get it? Send again"}
+                        {busy ? t("sendingAgain") : t("sendAgain")}
                       </button>
 
                       <Link
@@ -237,7 +226,7 @@ export default function ForgotPasswordPageClient() {
                         prefetch={false}
                         className="inline-flex min-h-[50px] w-full items-center justify-center rounded-xl bg-blue-600 text-[15px] font-semibold text-white shadow-[0_14px_36px_-12px_rgba(37,99,235,0.55)] transition-colors hover:bg-blue-700"
                       >
-                        Back to sign in
+                        {t("backToSignIn")}
                       </Link>
 
                       <button
@@ -249,7 +238,7 @@ export default function ForgotPasswordPageClient() {
                         }}
                         className="w-full text-[13px] font-medium text-neutral-500 transition-colors hover:text-neutral-800"
                       >
-                        Use a different email
+                        {t("useDifferentEmail")}
                       </button>
                     </motion.div>
                   ) : (
@@ -264,7 +253,7 @@ export default function ForgotPasswordPageClient() {
                     >
                       <div>
                         <label htmlFor={emailId} className="text-[13px] font-semibold text-neutral-700">
-                          Account email
+                          {t("accountEmailLabel")}
                         </label>
                         <input
                           ref={emailRef}
@@ -274,7 +263,7 @@ export default function ForgotPasswordPageClient() {
                           autoComplete="email"
                           inputMode="email"
                           required
-                          placeholder="you@example.com"
+                          placeholder={t("emailPlaceholder")}
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           className={inputClass}
@@ -298,7 +287,7 @@ export default function ForgotPasswordPageClient() {
                       >
                         <span className="relative flex items-center gap-2.5">
                           {busy && !reduceMotion ? <SubmitSpinner /> : null}
-                          {busy ? "Sending link…" : "Send reset link"}
+                          {busy ? t("sendingLink") : t("sendResetLink")}
                         </span>
                       </motion.button>
                     </motion.form>
@@ -307,20 +296,19 @@ export default function ForgotPasswordPageClient() {
 
                 {!sent ? (
                   <div className="mt-8 text-center text-[14px] text-neutral-600">
-                    Remembered it?{" "}
+                    {t("rememberedIt")}{" "}
                     <Link href={loginHref("/")} prefetch={false} className="font-semibold text-blue-600 hover:text-blue-700">
-                      Sign in
+                      {t("signIn")}
                     </Link>
                   </div>
                 ) : null}
 
                 <div className="mt-6 rounded-2xl border border-neutral-200/80 bg-neutral-50/60 px-4 py-4">
                   <p className="text-center text-[12px] leading-relaxed text-neutral-600">
-                    No account yet?{" "}
+                    {t("noAccountCreate")}{" "}
                     <Link href={registerHref("/")} prefetch={false} className="font-semibold text-blue-600 hover:text-blue-700">
-                      Create account
-                    </Link>{" "}
-                    instead of resetting a password.
+                      {t("createAccount")}
+                    </Link>
                   </p>
                 </div>
               </div>

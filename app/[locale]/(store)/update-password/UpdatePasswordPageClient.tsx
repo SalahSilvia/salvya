@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { AuthDaylight } from "@/components/auth/AuthDaylight";
 import { AuthTopBar } from "@/components/auth/AuthTopBar";
 import { SalvyaAuthSkeleton } from "@/components/skeleton";
@@ -87,6 +88,7 @@ function CheckRow({ children }: { children: React.ReactNode }) {
 }
 
 export default function UpdatePasswordPageClient() {
+  const t = useTranslations("auth");
   const router = useRouter();
   const searchParams = useSearchParams();
   const reduceMotion = useReducedMotion();
@@ -148,25 +150,25 @@ export default function UpdatePasswordPageClient() {
     setError(null);
 
     if (password.length < 8) {
-      setError("Use at least 8 characters for your password.");
+      setError(t("passwordMinForm"));
       return;
     }
     if (password !== confirm) {
-      setError("Passwords do not match. Check both fields and try again.");
+      setError(t("passwordMismatchForm"));
       return;
     }
     if (pwdAnalysis.passed < 3) {
-      setError("Use a stronger password — include upper and lower case letters and a number.");
+      setError(t("passwordStrongerRequired"));
       return;
     }
     if (!isSupabaseConfigured()) {
-      setError("Supabase is not configured on this environment.");
+      setError(t("supabaseNotConfigured"));
       return;
     }
 
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
-      setError("Could not connect to authentication.");
+      setError(t("authConnectFailed"));
       return;
     }
 
@@ -194,7 +196,7 @@ export default function UpdatePasswordPageClient() {
   if (!hasSession) {
     return (
       <AuthDaylight>
-        <AuthTopBar backHref={loginHref("/")} backLabel="Sign in" pill="Reset password" variant="day" />
+        <AuthTopBar backHref={loginHref("/")} backLabel={t("signIn")} pill={t("resetPassword")} variant="day" />
 
         <main className="min-h-dvh pt-[calc(3.5rem+env(safe-area-inset-top))] lg:grid lg:min-h-dvh lg:grid-cols-[minmax(0,1fr)_min(100%,440px)] xl:grid-cols-[minmax(0,1fr)_460px]">
           <aside className="relative hidden flex-col justify-between border-neutral-200/70 bg-gradient-to-br from-white/90 via-blue-50/40 to-sky-50/30 p-10 lg:flex xl:p-14">
@@ -204,13 +206,11 @@ export default function UpdatePasswordPageClient() {
               transition={{ duration: 0.5, ease }}
               className="max-w-md"
             >
-              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-700/80">Link expired</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-700/80">{t("linkExpiredKicker")}</p>
               <h2 className="mt-4 text-balance text-[clamp(1.75rem,3vw,2.35rem)] font-bold leading-[1.12] tracking-[-0.04em] text-neutral-950">
-                Request a fresh reset link.
+                {t("linkExpiredTitle")}
               </h2>
-              <p className="mt-4 text-[15px] leading-relaxed text-neutral-600">
-                Reset links are single-use and expire. Open the newest email from Salvya, or send yourself a new link.
-              </p>
+              <p className="mt-4 text-[15px] leading-relaxed text-neutral-600">{t("linkExpiredBody")}</p>
             </motion.div>
           </aside>
 
@@ -229,24 +229,21 @@ export default function UpdatePasswordPageClient() {
                       <path d="M10.3 4.7h3.4L20 20H4L10.3 4.7z" strokeLinejoin="round" />
                     </svg>
                   </div>
-                  <h1 className="mt-5 text-[1.5rem] font-bold tracking-[-0.03em] text-neutral-950">Link expired or invalid</h1>
-                  <p className="mt-3 text-[14px] leading-relaxed text-neutral-600">
-                    This page needs a valid reset link from your email. Older links stop working after you use them or when
-                    they expire.
-                  </p>
+                  <h1 className="mt-5 text-[1.5rem] font-bold tracking-[-0.03em] text-neutral-950">{t("linkExpired")}</h1>
+                  <p className="mt-3 text-[14px] leading-relaxed text-neutral-600">{t("linkExpiredPageBody")}</p>
                   <Link
                     href="/forgot-password"
                     prefetch={false}
                     className="mt-6 inline-flex min-h-[50px] w-full items-center justify-center rounded-xl bg-blue-600 text-[15px] font-semibold text-white shadow-[0_14px_36px_-12px_rgba(37,99,235,0.55)] transition-colors hover:bg-blue-700"
                   >
-                    Send a new reset link
+                    {t("sendNewResetLink")}
                   </Link>
                   <Link
                     href={loginHref("/")}
                     prefetch={false}
                     className="mt-4 inline-block text-[14px] font-semibold text-blue-600 hover:text-blue-700"
                   >
-                    Back to sign in
+                    {t("backToSignIn")}
                   </Link>
                 </div>
               </motion.div>
@@ -259,7 +256,7 @@ export default function UpdatePasswordPageClient() {
 
   return (
     <AuthDaylight>
-      <AuthTopBar backHref={loginHref("/")} backLabel="Sign in" pill="New password" variant="day" />
+      <AuthTopBar backHref={loginHref("/")} backLabel={t("signIn")} pill={t("pillNewPassword")} variant="day" />
 
       <main className="min-h-dvh pt-[calc(3.5rem+env(safe-area-inset-top))] lg:grid lg:min-h-dvh lg:grid-cols-[minmax(0,1fr)_min(100%,440px)] xl:grid-cols-[minmax(0,1fr)_460px]">
         <aside className="relative hidden flex-col justify-between border-neutral-200/70 bg-gradient-to-br from-white/90 via-blue-50/40 to-sky-50/30 p-10 backdrop-blur-[2px] lg:flex xl:p-14">
@@ -269,18 +266,15 @@ export default function UpdatePasswordPageClient() {
             transition={{ duration: 0.5, ease }}
             className="max-w-md"
           >
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-700/80">Secure update</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-700/80">{t("updateSecureKicker")}</p>
             <h2 className="mt-4 text-balance text-[clamp(1.75rem,3vw,2.35rem)] font-bold leading-[1.12] tracking-[-0.04em] text-neutral-950">
-              Choose a strong new password.
+              {t("updateHeroTitle")}
             </h2>
-            <p className="mt-4 text-[15px] leading-relaxed text-neutral-600">
-              You arrived here from a secure reset link. After saving, sign in on any device with your new password. Your
-              bag, likes, and orders stay on your account.
-            </p>
+            <p className="mt-4 text-[15px] leading-relaxed text-neutral-600">{t("updateHeroBody")}</p>
             <ul className="mt-10 space-y-4">
-              <CheckRow>Use a password you do not reuse on other sites.</CheckRow>
-              <CheckRow>Mix letters, numbers, and a symbol for the best protection.</CheckRow>
-              <CheckRow>Sign out of shared devices after updating.</CheckRow>
+              <CheckRow>{t("updateBullet1")}</CheckRow>
+              <CheckRow>{t("updateBullet2")}</CheckRow>
+              <CheckRow>{t("updateBullet3")}</CheckRow>
             </ul>
           </motion.div>
           <Link
@@ -288,13 +282,13 @@ export default function UpdatePasswordPageClient() {
             prefetch={false}
             className="border-t border-neutral-200/60 pt-8 text-[13px] font-semibold text-blue-700 hover:text-blue-800"
           >
-            Help center →
+            {t("helpCenter")} →
           </Link>
         </aside>
 
         <div className="flex flex-col px-[max(1rem,env(safe-area-inset-left))] pb-[max(2rem,env(safe-area-inset-bottom))] pr-[max(1rem,env(safe-area-inset-right))] lg:border-l lg:border-neutral-200/80 lg:px-8 lg:py-10 xl:px-12">
           <div className="lg:hidden">
-            <p className="pt-6 text-[13px] leading-relaxed text-neutral-600">Set a new password for your Salvya account.</p>
+            <p className="pt-6 text-[13px] leading-relaxed text-neutral-600">{t("updateMobileIntro")}</p>
           </div>
 
           <div className="flex flex-1 flex-col justify-center py-10 lg:py-6">
@@ -316,12 +310,10 @@ export default function UpdatePasswordPageClient() {
                     />
                   </div>
                   <h1 className="mt-6 text-[1.65rem] font-bold leading-tight tracking-[-0.04em] text-neutral-950 sm:text-[1.85rem]">
-                    {saved ? "Password updated" : "New password"}
+                    {saved ? t("passwordUpdated") : t("newPassword")}
                   </h1>
                   <p className="mt-2 max-w-[22rem] text-[14px] leading-relaxed text-neutral-500 sm:text-[15px]">
-                    {saved
-                      ? "Your password is saved. You can continue shopping or sign in again on another device."
-                      : "Create a password you have not used on Salvya before."}
+                    {saved ? t("passwordUpdatedBody") : t("updateIntro")}
                   </p>
                 </div>
 
@@ -337,21 +329,21 @@ export default function UpdatePasswordPageClient() {
                         role="status"
                         className="rounded-xl border border-emerald-200/90 bg-emerald-50/95 px-4 py-4 text-[13px] leading-relaxed text-emerald-950"
                       >
-                        You are signed in with your new password on this device.
+                        {t("signedInNewPassword")}
                       </div>
                       <button
                         type="button"
                         onClick={continueAfterSave}
                         className="flex min-h-[50px] w-full items-center justify-center rounded-xl bg-blue-600 text-[15px] font-semibold text-white shadow-[0_14px_36px_-12px_rgba(37,99,235,0.55)] transition-colors hover:bg-blue-700"
                       >
-                        Continue
+                        {t("continueBtn")}
                       </button>
                       <Link
                         href={loginHref("/")}
                         prefetch={false}
                         className="block text-center text-[14px] font-semibold text-blue-600 hover:text-blue-700"
                       >
-                        Sign in on another device
+                        {t("signInOtherDevice")}
                       </Link>
                     </motion.div>
                   ) : (
@@ -366,7 +358,7 @@ export default function UpdatePasswordPageClient() {
                       <div>
                         <div className="flex items-end justify-between gap-2">
                           <label htmlFor={pwdId} className="text-[13px] font-semibold text-neutral-700">
-                            New password <span className="text-rose-600">*</span>
+                            {t("newPassword")} <span className="text-rose-600">*</span>
                           </label>
                           <span className="text-[11px] font-semibold text-neutral-500" aria-live="polite">
                             {pwdLabel}
@@ -382,13 +374,13 @@ export default function UpdatePasswordPageClient() {
                             className={`${inputClass} pr-12`}
                             minLength={8}
                             required
-                            placeholder="At least 8 characters"
+                            placeholder={t("passwordMin8")}
                           />
                           <button
                             type="button"
                             onClick={() => setShowPassword((v) => !v)}
                             className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
-                            aria-label={showPassword ? "Hide password" : "Show password"}
+                            aria-label={showPassword ? t("hidePassword") : t("showPassword")}
                           >
                             <EyeToggleIcon visible={showPassword} />
                           </button>
@@ -403,27 +395,27 @@ export default function UpdatePasswordPageClient() {
                         </div>
                         <ul
                           className="mt-3 space-y-1.5 rounded-xl border border-neutral-100 bg-neutral-50/60 px-3 py-2.5"
-                          aria-label="Password requirements"
+                          aria-label={t("passwordMin8")}
                         >
-                          <ReqRow ok={pwdAnalysis.checks.len8}>At least 8 characters</ReqRow>
-                          <ReqRow ok={pwdAnalysis.checks.lower}>One lowercase letter</ReqRow>
-                          <ReqRow ok={pwdAnalysis.checks.upper}>One uppercase letter</ReqRow>
-                          <ReqRow ok={pwdAnalysis.checks.digit}>One number</ReqRow>
-                          <ReqRow ok={pwdAnalysis.checks.symbol}>One symbol (recommended)</ReqRow>
+                          <ReqRow ok={pwdAnalysis.checks.len8}>{t("passwordMin8")}</ReqRow>
+                          <ReqRow ok={pwdAnalysis.checks.lower}>{t("passwordLower")}</ReqRow>
+                          <ReqRow ok={pwdAnalysis.checks.upper}>{t("passwordUpper")}</ReqRow>
+                          <ReqRow ok={pwdAnalysis.checks.digit}>{t("passwordReqDigit")}</ReqRow>
+                          <ReqRow ok={pwdAnalysis.checks.symbol}>{t("passwordReqSymbol")}</ReqRow>
                         </ul>
                       </div>
 
                       <div>
                         <div className="flex items-center justify-between gap-2">
                           <label htmlFor={confirmId} className="text-[13px] font-semibold text-neutral-700">
-                            Confirm password <span className="text-rose-600">*</span>
+                            {t("confirmPasswordLabel")} <span className="text-rose-600">*</span>
                           </label>
                           {confirm.length > 0 ? (
                             <span
                               className={`text-[11px] font-semibold ${confirmOk ? "text-emerald-600" : "text-amber-600"}`}
                               aria-live="polite"
                             >
-                              {confirmOk ? "Matches" : "Does not match"}
+                              {confirmOk ? t("passwordMatch") : t("passwordMismatch")}
                             </span>
                           ) : null}
                         </div>
@@ -437,13 +429,13 @@ export default function UpdatePasswordPageClient() {
                             className={`${inputClass} pr-12 ${confirmWarn ? "border-amber-300 ring-2 ring-amber-200/80" : confirmOk ? "border-emerald-300 ring-2 ring-emerald-200/60" : ""}`}
                             minLength={8}
                             required
-                            placeholder="Repeat password"
+                            placeholder={t("passwordRepeat")}
                           />
                           <button
                             type="button"
                             onClick={() => setShowConfirm((v) => !v)}
                             className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
-                            aria-label={showConfirm ? "Hide password" : "Show password"}
+                            aria-label={showConfirm ? t("hidePassword") : t("showPassword")}
                           >
                             <EyeToggleIcon visible={showConfirm} />
                           </button>
@@ -467,7 +459,7 @@ export default function UpdatePasswordPageClient() {
                       >
                         <span className="relative flex items-center gap-2.5">
                           {busy && !reduceMotion ? <SubmitSpinner /> : null}
-                          {busy ? "Saving…" : "Save new password"}
+                          {busy ? t("saving") : t("saveNewPassword")}
                         </span>
                       </motion.button>
                     </motion.form>

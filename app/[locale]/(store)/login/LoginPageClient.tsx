@@ -73,6 +73,7 @@ const inputClass =
 
 export default function LoginPageClient() {
   const t = useTranslations("auth");
+  const tCommon = useTranslations("common");
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = useMemo(() => safeNextPath(searchParams.get("next")), [searchParams]);
@@ -121,9 +122,7 @@ export default function LoginPageClient() {
     }
 
     if (searchParams.get("existing") === "1" && prefill) {
-      setInfoBanner(
-        `An account already exists for ${prefill}. Sign in below — do not create another account with the same email.`,
-      );
+      setInfoBanner(t("existingEmailBanner", { email: prefill }));
       return;
     }
 
@@ -162,7 +161,7 @@ export default function LoginPageClient() {
       setResendOk(formatSupabaseAuthError(error.message));
       return;
     }
-    setResendOk("Check your inbox — we sent another confirmation link.");
+    setResendOk(t("resendCheckInbox"));
   }, [lastEmail]);
 
   const handleGoogleSignIn = useCallback(async () => {
@@ -256,41 +255,33 @@ export default function LoginPageClient() {
       <main className="min-h-dvh pt-[calc(3.5rem+env(safe-area-inset-top))] lg:grid lg:min-h-dvh lg:grid-cols-[minmax(0,1fr)_min(100%,440px)] xl:grid-cols-[minmax(0,1fr)_460px]">
         <aside className="relative hidden flex-col justify-between border-neutral-200/70 bg-gradient-to-br from-white/90 via-blue-50/40 to-sky-50/30 p-10 backdrop-blur-[2px] lg:flex xl:p-14">
           <div className="max-w-md">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-700/80">Salvya customers</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-700/80">{t("loginHeroKicker")}</p>
             <h2 className="mt-4 text-balance text-[clamp(1.75rem,3vw,2.35rem)] font-bold leading-[1.12] tracking-[-0.04em] text-neutral-950">
-              One sign-in for your bag, orders, and artist shops.
+              {t("loginHeroTitle")}
             </h2>
-            <p className="mt-4 text-[15px] leading-relaxed text-neutral-600">
-              One account for every device. Sign in to sync your bag, likes, follows, notifications, and orders placed
-              while logged in — Supabase backs more than sign-in alone. Checkout contact fields still use your browser
-              session until saved addresses ship.
-            </p>
+            <p className="mt-4 text-[15px] leading-relaxed text-neutral-600">{t("loginHeroBody")}</p>
             <ul className="mt-10 space-y-4">
-              <CheckRow>Bag, likes, alerts, and order history on your profile when cloud sync is enabled.</CheckRow>
-              <CheckRow>Secure access with email and password — recovery steps live in Help & terms.</CheckRow>
-              <CheckRow>Selling as a creator? Use this account, then open creator tools from the menu.</CheckRow>
+              <CheckRow>{t("loginBullet1")}</CheckRow>
+              <CheckRow>{t("loginBullet2")}</CheckRow>
+              <CheckRow>{t("loginBullet3")}</CheckRow>
             </ul>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-neutral-200/60 pt-8 text-[13px] text-neutral-500">
             <Link href="/help-center" prefetch={false} className="font-semibold text-blue-700 hover:text-blue-800">
-              Help center
+              {t("helpCenter")}
             </Link>
             <span className="text-neutral-300" aria-hidden>
               ·
             </span>
             <Link href="/terms#recovery" prefetch={false} className="font-semibold text-neutral-700 hover:text-neutral-950">
-              Account recovery
+              {t("accountRecoveryLink")}
             </Link>
           </div>
         </aside>
 
         <div className="flex flex-col px-[max(1rem,env(safe-area-inset-left))] pb-[max(2rem,env(safe-area-inset-bottom))] pr-[max(1rem,env(safe-area-inset-right))] lg:border-l lg:border-neutral-200/80 lg:px-8 lg:py-10 xl:px-12">
           <div className="lg:hidden">
-            <p className="pt-6 text-[13px] leading-relaxed text-neutral-600">
-              Sign in for the <span className="font-semibold text-neutral-800">member shell</span>, synced{" "}
-              <span className="font-semibold text-neutral-800">bag &amp; likes</span>, and artist shops. Checkout contact
-              details stay in your browser session until saved addresses ship.
-            </p>
+            <p className="pt-6 text-[13px] leading-relaxed text-neutral-600">{t("loginMobileIntro")}</p>
           </div>
 
           <div className="flex flex-1 flex-col justify-center py-10 lg:py-6">
@@ -333,7 +324,7 @@ export default function LoginPageClient() {
               <form id="login-form" onSubmit={onSubmit} className="space-y-5" noValidate>
                   <div>
                     <label htmlFor={emailId} className="text-[13px] font-semibold text-neutral-700">
-                      Email
+                      {t("email")}
                     </label>
                     <input
                       ref={emailRef}
@@ -343,7 +334,7 @@ export default function LoginPageClient() {
                       autoComplete="email"
                       inputMode="email"
                       required
-                      placeholder="you@example.com"
+                      placeholder={t("emailPlaceholder")}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className={inputClass}
@@ -353,7 +344,7 @@ export default function LoginPageClient() {
                   <div>
                     <div className="flex items-center justify-between gap-2">
                       <label htmlFor={passwordId} className="text-[13px] font-semibold text-neutral-700">
-                        Password
+                        {t("password")}
                       </label>
                       <Link
                         href={
@@ -364,7 +355,7 @@ export default function LoginPageClient() {
                         prefetch={false}
                         className="text-[12px] font-semibold text-blue-600 hover:text-blue-700"
                       >
-                        Forgot password?
+                        {t("forgotPassword")}
                       </Link>
                     </div>
                     <div className="relative mt-2">
@@ -416,7 +407,7 @@ export default function LoginPageClient() {
                             }}
                             className="shrink-0 self-start rounded-lg px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-blue-800/80 hover:bg-blue-100/80"
                           >
-                            Dismiss
+                            {tCommon("dismiss")}
                           </button>
                         </div>
                       </motion.div>
@@ -451,7 +442,7 @@ export default function LoginPageClient() {
                             }}
                             className="shrink-0 self-start rounded-lg px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-amber-800/80 hover:bg-amber-100/80"
                           >
-                            Dismiss
+                            {tCommon("dismiss")}
                           </button>
                         </div>
                       </motion.div>

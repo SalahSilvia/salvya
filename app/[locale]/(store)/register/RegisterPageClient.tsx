@@ -29,22 +29,24 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
-const SHIPPING_COUNTRIES = [
-  { value: "", label: "Country / region" },
-  { value: "FR", label: "France" },
-  { value: "BE", label: "Belgium" },
-  { value: "NL", label: "Netherlands" },
-  { value: "DE", label: "Germany" },
-  { value: "ES", label: "Spain" },
-  { value: "IT", label: "Italy" },
-  { value: "PT", label: "Portugal" },
-  { value: "GB", label: "United Kingdom" },
-  { value: "IE", label: "Ireland" },
-  { value: "CH", label: "Switzerland" },
-  { value: "MA", label: "Morocco" },
-  { value: "US", label: "United States" },
-  { value: "OTHER", label: "Other" },
-] as const;
+const SHIPPING_COUNTRY_CODES = ["", "FR", "BE", "NL", "DE", "ES", "IT", "PT", "GB", "IE", "CH", "MA", "US", "OTHER"] as const;
+
+const COUNTRY_LABEL_KEYS: Record<(typeof SHIPPING_COUNTRY_CODES)[number], string> = {
+  "": "countryPlaceholder",
+  FR: "countryFR",
+  BE: "countryBE",
+  NL: "countryNL",
+  DE: "countryDE",
+  ES: "countryES",
+  IT: "countryIT",
+  PT: "countryPT",
+  GB: "countryGB",
+  IE: "countryIE",
+  CH: "countryCH",
+  MA: "countryMA",
+  US: "countryUS",
+  OTHER: "countryOTHER",
+};
 
 function EyeToggleIcon({ visible }: { visible: boolean }) {
   return visible ? (
@@ -110,6 +112,14 @@ const checkInput = "mt-1 size-4 shrink-0 rounded border-neutral-300 text-blue-60
 
 export default function RegisterPageClient() {
   const t = useTranslations("auth");
+  const shippingCountries = useMemo(
+    () =>
+      SHIPPING_COUNTRY_CODES.map((value) => ({
+        value,
+        label: t(COUNTRY_LABEL_KEYS[value] as Parameters<typeof t>[0]),
+      })),
+    [t],
+  );
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = useMemo(() => safeNextPath(searchParams.get("next")), [searchParams]);
@@ -244,19 +254,19 @@ export default function RegisterPageClient() {
     setExistingEmail(null);
 
     if (password !== confirmPassword) {
-      setFormError("Passwords do not match. Check both fields and try again.");
+      setFormError(t("passwordMismatchForm"));
       return;
     }
     if (password.length < 8) {
-      setFormError("Use at least 8 characters for your password.");
+      setFormError(t("passwordMinForm"));
       return;
     }
     if (!termsAccepted) {
-      setFormError("Please accept the Terms of Service and Account creation addendum to create your account.");
+      setFormError(t("termsRequired"));
       return;
     }
     if (!country) {
-      setFormError("Choose your country or region so we can show the right shipping options later.");
+      setFormError(t("countryRequired"));
       return;
     }
 
@@ -268,15 +278,13 @@ export default function RegisterPageClient() {
       setBusy(true);
       await new Promise((r) => setTimeout(r, 400));
       setBusy(false);
-      setBanner(
-        "Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to salvya.local.env (see .env.example), restart dev, then try again.",
-      );
+      setBanner(t("supabaseEnvHint"));
       return;
     }
 
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
-      setFormError("Could not start Supabase client. Check your environment variables.");
+      setFormError(t("authConnectFailed"));
       return;
     }
 
@@ -375,28 +383,25 @@ export default function RegisterPageClient() {
   return (
     <AuthDaylight>
       <AuthToast toast={toast} onDismiss={dismissToast} />
-      <AuthTopBar backHref={loginHref(returnTo)} backLabel="Sign in" pill="Create account" variant="day" />
+      <AuthTopBar backHref={loginHref(returnTo)} backLabel={t("signIn")} pill={t("createAccount")} variant="day" />
 
       <main className="min-h-dvh pt-[calc(3.5rem+env(safe-area-inset-top))] lg:grid lg:min-h-dvh lg:grid-cols-[minmax(0,1fr)_min(100%,480px)] xl:grid-cols-[minmax(0,1fr)_500px]">
         <aside className="relative hidden flex-col justify-between border-neutral-200/70 bg-gradient-to-br from-white/90 via-blue-50/40 to-sky-50/30 p-10 backdrop-blur-[2px] lg:flex xl:p-14">
           <div className="max-w-md">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-700/80">Customer account</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-700/80">{t("registerKicker")}</p>
             <h2 className="mt-4 text-balance text-[clamp(1.75rem,3vw,2.35rem)] font-bold leading-[1.12] tracking-[-0.04em] text-neutral-950">
-              Join Salvya to shop artist merch with a single profile.
+              {t("registerHeroTitle")}
             </h2>
-            <p className="mt-4 text-[15px] leading-relaxed text-neutral-600">
-              Add your name, email, and region once. Sign in pre-fills checkout and syncs your bag, likes, follows, and
-              alerts to your account. Real orders use your SVY reference; a saved address book in Account is coming next.
-            </p>
+            <p className="mt-4 text-[15px] leading-relaxed text-neutral-600">{t("registerHeroBody")}</p>
             <ul className="mt-10 space-y-4">
-              <CheckRow>Faster checkout on this device when your Salvya session matches your account.</CheckRow>
-              <CheckRow>Optional updates on drops and restocks from artists you care about.</CheckRow>
-              <CheckRow>Selling later? This stays separate from creator onboarding.</CheckRow>
+              <CheckRow>{t("registerBullet1")}</CheckRow>
+              <CheckRow>{t("registerBullet2")}</CheckRow>
+              <CheckRow>{t("registerBullet3")}</CheckRow>
             </ul>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-neutral-200/60 pt-8 text-[13px] text-neutral-500">
             <Link href="/help-center" prefetch={false} className="font-semibold text-blue-700 hover:text-blue-800">
-              Help center
+              {t("helpCenter")}
             </Link>
             <span className="text-neutral-300" aria-hidden>
               ·
@@ -534,7 +539,7 @@ export default function RegisterPageClient() {
                       value={country}
                       onChange={(e) => setCountry(e.target.value)}
                     >
-                      {SHIPPING_COUNTRIES.map((c) => (
+                      {shippingCountries.map((c) => (
                         <option key={c.value || "empty"} value={c.value} disabled={c.value === ""}>
                           {c.label}
                         </option>
@@ -560,7 +565,7 @@ export default function RegisterPageClient() {
                         autoComplete="new-password"
                         required
                         minLength={8}
-                        placeholder="At least 8 characters"
+                        placeholder={t("passwordMin8")}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         className={`${inputClass} pr-12`}
@@ -569,7 +574,7 @@ export default function RegisterPageClient() {
                         type="button"
                         onClick={() => setShowPassword((v) => !v)}
                         className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
-                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        aria-label={showPassword ? t("hidePassword") : t("showPassword")}
                       >
                         <EyeToggleIcon visible={showPassword} />
                       </button>
@@ -583,7 +588,7 @@ export default function RegisterPageClient() {
                       ))}
                     </div>
                     <ul className="mt-3 space-y-1.5 rounded-xl border border-neutral-100 bg-neutral-50/60 px-3 py-2.5" aria-label="Password requirements">
-                      <ReqRow ok={pwdAnalysis.checks.len8}>At least 8 characters</ReqRow>
+                      <ReqRow ok={pwdAnalysis.checks.len8}>{t("passwordMin8")}</ReqRow>
                       <ReqRow ok={pwdAnalysis.checks.lower}>One lowercase letter</ReqRow>
                       <ReqRow ok={pwdAnalysis.checks.upper}>One uppercase letter</ReqRow>
                       <ReqRow ok={pwdAnalysis.checks.digit}>One number</ReqRow>
@@ -601,7 +606,7 @@ export default function RegisterPageClient() {
                           className={`text-[11px] font-semibold ${confirmOk ? "text-emerald-600" : "text-amber-600"}`}
                           aria-live="polite"
                         >
-                          {confirmOk ? "Matches" : "Does not match"}
+                          {confirmOk ? t("passwordMatch") : t("passwordMismatch")}
                         </span>
                       ) : null}
                     </div>
@@ -622,7 +627,7 @@ export default function RegisterPageClient() {
                         type="button"
                         onClick={() => setShowConfirm((v) => !v)}
                         className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
-                        aria-label={showConfirm ? "Hide password" : "Show password"}
+                        aria-label={showConfirm ? t("hidePassword") : t("showPassword")}
                       >
                         <EyeToggleIcon visible={showConfirm} />
                       </button>
