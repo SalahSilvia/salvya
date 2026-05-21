@@ -7,6 +7,7 @@ export function resolveBrandAssetPath(filename: string): string | null {
   const cwd = process.cwd();
   const candidates = [
     join(cwd, ...BRAND_DIR, filename),
+    join(cwd, "public", filename),
     join(cwd, "public", "media", filename),
     join(cwd, "..", filename),
   ];

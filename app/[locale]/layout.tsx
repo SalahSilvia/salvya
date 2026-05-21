@@ -7,10 +7,22 @@ import { LocaleProviders } from "@/components/layout/LocaleProviders";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { isRtlLocale, routing, type AppLocale } from "@/i18n/routing";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/seo/json-ld";
+import { getSiteBranding } from "@/lib/brand/site-branding";
 import { rootSiteMetadata } from "@/lib/seo/metadata";
 import { getAcceptLanguage, getRegionalPreferences } from "@/lib/geo/preferences-server";
 
-export const metadata: Metadata = rootSiteMetadata();
+export async function generateMetadata(): Promise<Metadata> {
+  const base = rootSiteMetadata();
+  const { faviconUrl } = await getSiteBranding();
+  return {
+    ...base,
+    icons: {
+      icon: [{ url: faviconUrl, type: "image/png" }],
+      apple: [{ url: faviconUrl, type: "image/png" }],
+      shortcut: [faviconUrl],
+    },
+  };
+}
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));

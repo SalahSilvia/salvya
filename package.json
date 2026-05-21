@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "predev": "node scripts/create-local-env.mjs && node scripts/copy-profiles.mjs",
-    "prebuild": "node scripts/create-local-env.mjs && node scripts/copy-profiles.mjs && node scripts/copy-catalog-images-to-public.mjs",
+    "prebuild": "node scripts/create-local-env.mjs && node scripts/copy-profiles.mjs && node scripts/copy-catalog-images-to-public.mjs && node scripts/copy-site-favicon.mjs",
     "setup:env": "node scripts/create-local-env.mjs",
     "clean": "node scripts/clean-build-cache.mjs",
     "dev:stop": "node scripts/stop-dev-servers.mjs",
@@ -22,7 +22,8 @@
     "db:verify": "node scripts/verify-supabase-schema.mjs",
     "validate:production-env": "node scripts/validate-production-env.mjs",
     "catalog:sync": "node scripts/sync-catalog.mjs",
-    "blogs:sync": "node scripts/sync-blogs.mjs"
+    "blogs:sync": "node scripts/sync-blogs.mjs",
+    "favicon:seed": "node scripts/copy-site-favicon.mjs && node scripts/seed-site-favicon.mjs"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.53.1",
@@ -36,8 +37,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^3.8.1",
-    "server-only": "^0.0.1",
-    "sharp": "^0.34.5"
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

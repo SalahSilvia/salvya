@@ -6,6 +6,8 @@ export type PlatformSettings = {
   currency: string;
   supportEmail: string;
   publicSiteUrl: string;
+  /** Public URL (Supabase Storage) or site path e.g. /favicon.png */
+  faviconUrl: string | null;
   maintenanceMode: boolean;
   maintenanceBanner: string;
 };
@@ -49,7 +51,8 @@ export const DEFAULT_STORE_SETTINGS: StoreSettingsBundle = {
     defaultLocale: "en",
     currency: "EUR",
     supportEmail: "support@salvya.com",
-    publicSiteUrl: "https://salvya.com",
+    publicSiteUrl: "https://www.salvyastore.com",
+    faviconUrl: null,
     maintenanceMode: false,
     maintenanceBanner: "We are performing scheduled maintenance. Check back shortly.",
   },
@@ -102,6 +105,21 @@ export function sanitizeStoreSettingsSection(
         currency: typeof v.currency === "string" ? v.currency.trim().slice(0, 8).toUpperCase() || "EUR" : b.currency,
         supportEmail: typeof v.supportEmail === "string" ? v.supportEmail.trim().slice(0, 120) : b.supportEmail,
         publicSiteUrl: typeof v.publicSiteUrl === "string" ? v.publicSiteUrl.trim().slice(0, 200) : b.publicSiteUrl,
+        faviconUrl:
+          typeof v.faviconUrl === "string"
+            ? (() => {
+                const t = v.faviconUrl.trim().slice(0, 500);
+                if (!t) return null;
+                if (t.startsWith("/") && !t.startsWith("//")) return t;
+                try {
+                  const u = new URL(t);
+                  if (u.protocol === "https:" || u.protocol === "http:") return u.toString();
+                } catch {
+                  return null;
+                }
+                return null;
+              })()
+            : b.faviconUrl,
         maintenanceMode: Boolean(v.maintenanceMode),
         maintenanceBanner: typeof v.maintenanceBanner === "string" ? v.maintenanceBanner.trim().slice(0, 500) : b.maintenanceBanner,
       };

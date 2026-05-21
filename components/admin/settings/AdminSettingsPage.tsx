@@ -398,6 +398,27 @@ export function AdminSettingsPage() {
                   onChange={(e) => setSettings({ ...settings, platform: { ...p, publicSiteUrl: e.target.value } })}
                 />
               </label>
+              <div className="rounded-xl border border-[#e3e5e7] bg-[#fafbfb] p-4">
+                <p className="text-[13px] font-medium text-[#202223]">Site favicon</p>
+                <p className={`mt-1 ${adminMuted}`}>
+                  Stored in Supabase (<code className="text-[12px]">store_settings.platform.faviconUrl</code>).
+                  Run <code className="text-[12px]">npm run favicon:seed</code> after deploy to upload from{" "}
+                  <code className="text-[12px]">favicon-png.png</code>.
+                </p>
+                {p.faviconUrl ? (
+                  <div className="mt-3 flex items-center gap-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.faviconUrl} alt="" className="size-10 rounded-lg border border-[#e3e5e7] bg-black object-contain" />
+                    <input
+                      className={`min-w-0 flex-1 ${adminInputClass}`}
+                      value={p.faviconUrl}
+                      onChange={(e) => setSettings({ ...settings, platform: { ...p, faviconUrl: e.target.value } })}
+                    />
+                  </div>
+                ) : (
+                  <p className={`mt-2 ${adminMuted}`}>No favicon URL in database yet — using /favicon.png from the build.</p>
+                )}
+              </div>
               <label className="flex items-center gap-2 text-[13px]">
                 <input
                   type="checkbox"

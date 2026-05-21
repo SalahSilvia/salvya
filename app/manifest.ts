@@ -1,7 +1,9 @@
 import type { MetadataRoute } from "next";
+import { getSiteFaviconUrl } from "@/lib/brand/site-branding";
 import { SITE_NAME } from "@/lib/seo/site";
 
-export default function manifest(): MetadataRoute.Manifest {
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
+  const faviconUrl = await getSiteFaviconUrl();
   return {
     name: SITE_NAME,
     short_name: SITE_NAME,
@@ -13,9 +15,9 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#050508",
     icons: [
       {
-        src: "/brand/salvya-mark.svg",
+        src: faviconUrl,
         sizes: "512x512",
-        type: "image/svg+xml",
+        type: "image/png",
         purpose: "any",
       },
     ],

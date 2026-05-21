@@ -11,4 +11,13 @@ describe("sanitizeStoreSettingsSection", () => {
     const out = sanitizeStoreSettingsSection("payments", { paypalMode: "invalid" });
     expect(out.paypalMode).toBe("sandbox");
   });
+
+  it("sanitizes platform faviconUrl", () => {
+    const out = sanitizeStoreSettingsSection("platform", {
+      faviconUrl: "https://cdn.example.com/site/favicon.png",
+    });
+    expect(out.faviconUrl).toBe("https://cdn.example.com/site/favicon.png");
+    const bad = sanitizeStoreSettingsSection("platform", { faviconUrl: "//evil.com/x" });
+    expect(bad.faviconUrl).toBeNull();
+  });
 });
