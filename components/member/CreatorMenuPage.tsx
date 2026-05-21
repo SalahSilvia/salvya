@@ -19,15 +19,19 @@ import {
   CUSTOMER_ABOUT_STORY_HREF,
   CUSTOMER_PROFILE_HREF,
   CUSTOMER_SETTINGS_HREF,
-  CUSTOMER_SHOPPING_LINKS,
-  MENU_DISCOVER_MEMBER,
 } from "@/lib/menu/menu-hub-links";
+import {
+  useLocalizedDiscoverMember,
+  useLocalizedShoppingLinks,
+} from "@/lib/i18n/use-localized-menu-links";
 
 /** Creator-first menu — studio links instead of apply CTAs. */
 export function CreatorMenuPage() {
   const router = useRouter();
   const { user } = useSupabaseUser();
 
+  const discoverLinks = useLocalizedDiscoverMember();
+  const shoppingLinks = useLocalizedShoppingLinks();
   const headline = useMemo(() => (user ? welcomeHeadline(user) : { line: "Welcome", name: "" }), [user]);
 
   const signOut = useCallback(async () => {
@@ -46,8 +50,8 @@ export function CreatorMenuPage() {
         settingsHref={CUSTOMER_SETTINGS_HREF}
       />
       <MenuCreatorProgrammeCard mode="approved" delay={0.04} />
-      <MenuDiscoverGrid links={MENU_DISCOVER_MEMBER} delay={0.1} />
-      <MenuShoppingCard links={CUSTOMER_SHOPPING_LINKS} delay={0.14} />
+      <MenuDiscoverGrid links={discoverLinks} delay={0.1} />
+      <MenuShoppingCard links={shoppingLinks} delay={0.14} />
       <MenuPoliciesHub />
       <MenuAboutCard href={CUSTOMER_ABOUT_STORY_HREF} />
       <MenuSignOutButton onSignOut={() => void signOut()} />

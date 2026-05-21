@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useId, useState } from "react";
+import { useCallback, useId, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { SalvyaLogoImage } from "@/components/brand/SalvyaLogoImage";
 import { CustomerMenuSoftIcon } from "@/components/member/CustomerMenuSoftIcon";
 import { loginHref, registerHref } from "@/lib/auth/login-href";
 import type { MenuHubLink } from "@/lib/menu/menu-hub-links";
-import { MENU_POLICY_GROUPS } from "@/lib/menu/menu-hub-links";
+import { useLocalizedPolicyGroups } from "@/lib/i18n/use-localized-menu-links";
 import {
   CREATOR_APPLICATION_STATUS_PATH,
   CREATOR_DASHBOARD_PATH,
@@ -32,6 +33,7 @@ function SectionLabel({ title, subtitle }: { title: string; subtitle?: string })
 }
 
 export function MenuGuestHero() {
+  const t = useTranslations("menu");
   const pathname = usePathname() ?? "/menu";
   const reduceMotion = useReducedMotion();
 
@@ -64,27 +66,25 @@ export function MenuGuestHero() {
           className="h-9 w-auto object-contain object-left"
           fallbackClassName="text-xl font-semibold tracking-tight text-white"
         />
-        <p className="mt-5 text-[10px] font-semibold uppercase tracking-[0.24em] text-violet-300/80">Creator commerce</p>
+        <p className="mt-5 text-[10px] font-semibold uppercase tracking-[0.24em] text-violet-300/80">{t("creatorCommerce")}</p>
         <h1 className="mt-3 max-w-[16ch] text-[clamp(1.65rem,6vw,2.1rem)] font-semibold leading-[1.08] tracking-[-0.04em] text-white">
-          Join the Salvya community
+          {t("guestHeadline")}
         </h1>
-        <p className="mt-3 max-w-sm text-[15px] leading-relaxed text-white/48">
-          Discover limited drops, follow creators, and shop premium merch — all in one place.
-        </p>
+        <p className="mt-3 max-w-sm text-[15px] leading-relaxed text-white/48">{t("guestDiscoverSubtitle")}</p>
         <div className="mt-7 flex flex-col gap-2.5 sm:flex-row sm:gap-3">
           <Link
             href={loginHref(pathname)}
             prefetch={false}
             className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-2xl bg-gradient-to-b from-white to-neutral-200 px-5 text-[15px] font-semibold text-neutral-950 shadow-[0_12px_40px_-12px_rgba(255,255,255,0.35)] transition-transform active:scale-[0.99]"
           >
-            Sign in
+            {t("signIn")}
           </Link>
           <Link
             href={registerHref(pathname)}
             prefetch={false}
             className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-2xl border border-white/[0.16] bg-white/[0.06] px-5 text-[15px] font-semibold text-white/92 backdrop-blur-md transition-[background-color,transform] hover:bg-white/[0.1] active:scale-[0.99]"
           >
-            Create account
+            {t("createAccount")}
           </Link>
         </div>
       </div>
@@ -306,13 +306,14 @@ export function MenuShoppingCard({
   links: MenuHubLink[];
   delay?: number;
 }) {
+  const t = useTranslations("menu");
   const reduceMotion = useReducedMotion();
 
   return (
     <motion.section className={`mt-8 ${card}`} initial={reduceMotion ? false : { opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.48, ease, delay }}>
       <div className="border-b border-white/[0.06] px-4 py-4 sm:px-5 sm:py-5">
-        <h2 className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/55">Shopping</h2>
-        <p className="mt-1.5 text-[13px] text-white/38">Drops, bag, sizing, and order tracking.</p>
+        <h2 className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/55">{t("shopping")}</h2>
+        <p className="mt-1.5 text-[13px] text-white/38">{t("shoppingCardSubtitle")}</p>
       </div>
       <ul className="m-0 divide-y divide-white/[0.06] p-1.5 sm:p-2">
         {links.map((item, index) => (
@@ -355,7 +356,7 @@ function MenuPolicyDropdown({
   onToggle,
   reduceMotion,
 }: {
-  group: (typeof MENU_POLICY_GROUPS)[number];
+  group: { id: string; title: string; links: MenuHubLink[] };
   open: boolean;
   onToggle: () => void;
   reduceMotion: boolean | null;
@@ -437,6 +438,8 @@ function MenuPolicyDropdown({
 }
 
 export function MenuPoliciesHub({ delay = 0.16 }: { delay?: number }) {
+  const t = useTranslations("menu");
+  const policyGroups = useLocalizedPolicyGroups();
   const reduceMotion = useReducedMotion();
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set());
 
@@ -467,8 +470,8 @@ export function MenuPoliciesHub({ delay = 0.16 }: { delay?: number }) {
             <CustomerMenuSoftIcon linkId="report-problem" className="!border-rose-400/25 !bg-rose-500/10 !text-rose-300" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[14px] font-semibold tracking-[-0.02em] text-rose-100">Report a problem</span>
-            <span className="mt-0.5 block text-[12px] text-rose-200/45">Help us improve your experience</span>
+            <span className="block text-[14px] font-semibold tracking-[-0.02em] text-rose-100">{t("reportProblem")}</span>
+            <span className="mt-0.5 block text-[12px] text-rose-200/45">{t("reportProblemCardHint")}</span>
           </span>
           <span className="text-rose-300/50 group-hover:text-rose-200" aria-hidden>
             →
@@ -476,7 +479,7 @@ export function MenuPoliciesHub({ delay = 0.16 }: { delay?: number }) {
         </Link>
       </motion.div>
       <motion.div className="flex flex-col gap-2.5">
-        {MENU_POLICY_GROUPS.map((group, index) => (
+        {policyGroups.map((group, index) => (
           <motion.div
             key={group.id}
             initial={reduceMotion ? false : { opacity: 0, y: 8 }}
@@ -497,6 +500,7 @@ export function MenuPoliciesHub({ delay = 0.16 }: { delay?: number }) {
 }
 
 export function MenuAboutCard({ href, delay = 0.18 }: { href: string; delay?: number }) {
+  const t = useTranslations("menu");
   const reduceMotion = useReducedMotion();
 
   return (
@@ -509,14 +513,12 @@ export function MenuAboutCard({ href, delay = 0.18 }: { href: string; delay?: nu
       <div className="flex items-start gap-3">
         <CustomerMenuSoftIcon linkId="about" size="sm" />
         <div>
-          <h2 className="text-[1.1rem] font-semibold tracking-[-0.03em] text-white/95">Why Salvya</h2>
-          <p className="mt-2 text-[14px] leading-relaxed text-white/45">
-            Fashion-tech for creators — limited drops, premium merch, and a community that moves culture forward.
-          </p>
+          <h2 className="text-[1.1rem] font-semibold tracking-[-0.03em] text-white/95">{t("aboutTitle")}</h2>
+          <p className="mt-2 text-[14px] leading-relaxed text-white/45">{t("aboutBody")}</p>
         </div>
       </div>
       <Link href={href} prefetch={false} className="mt-5 inline-flex items-center gap-2 text-[14px] font-semibold text-[#9eb6ff] hover:text-[#c8d6ff]">
-        Read our story
+        {t("readStory")}
         <span aria-hidden>→</span>
       </Link>
     </motion.section>
@@ -524,6 +526,7 @@ export function MenuAboutCard({ href, delay = 0.18 }: { href: string; delay?: nu
 }
 
 export function MenuSignOutButton({ onSignOut }: { onSignOut: () => void }) {
+  const t = useTranslations("menu");
   const reduceMotion = useReducedMotion();
 
   return (
@@ -534,7 +537,7 @@ export function MenuSignOutButton({ onSignOut }: { onSignOut: () => void }) {
         className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-red-500/35 bg-red-600/[0.15] text-[14px] font-semibold text-red-400 transition-[background-color,transform] hover:bg-red-600/[0.22] active:scale-[0.99]"
       >
         <CustomerMenuSoftIcon linkId="sign-out" size="sm" className="!border-red-400/30 !bg-red-500/10 !text-red-400" />
-        Sign out
+        {t("signOut")}
       </button>
     </motion.div>
   );

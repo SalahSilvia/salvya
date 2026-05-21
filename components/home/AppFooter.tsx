@@ -2,28 +2,31 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-
-const discoverLinks = [
-  { label: "Shop", href: "/shop" },
-  { label: "Search", href: "/search" },
-  { label: "Blogs", href: "/blogs" },
-  { label: "Creators", href: "/creator" },
-];
-
-const supportLinks = [
-  { label: "Help", href: "/help-center" },
-  { label: "Track order", href: "/track-order" },
-  { label: "Size guide", href: "/size-guide" },
-  { label: "Shipping", href: "/shipping" },
-];
-
-const legalLinks = [
-  { label: "Terms", href: "/terms" },
-  { label: "Returns", href: "/returns" },
-  { label: "Privacy", href: "/cookies" },
-];
+import { useTranslations } from "next-intl";
 
 export function AppFooter() {
+  const t = useTranslations("footer");
+
+  const discoverLinks = [
+    { label: t("shop"), href: "/shop" },
+    { label: t("search"), href: "/search" },
+    { label: t("blogs"), href: "/blogs" },
+    { label: t("creators"), href: "/creator" },
+  ];
+
+  const supportLinks = [
+    { label: t("help"), href: "/help-center" },
+    { label: t("trackOrder"), href: "/track-order" },
+    { label: t("sizeGuide"), href: "/size-guide" },
+    { label: t("shipping"), href: "/shipping" },
+  ];
+
+  const legalLinks = [
+    { label: t("terms"), href: "/terms" },
+    { label: t("returns"), href: "/returns" },
+    { label: t("privacy"), href: "/cookies" },
+  ];
+
   return (
     <motion.footer
       initial={{ opacity: 0 }}
@@ -35,7 +38,7 @@ export function AppFooter() {
       <div className="mx-auto flex max-w-md flex-col gap-8">
         <nav className="grid grid-cols-2 gap-6 text-left sm:grid-cols-3" aria-label="Site footer">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/35">Discover</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/35">{t("discover")}</p>
             <ul className="mt-3 space-y-2">
               {discoverLinks.map((l) => (
                 <li key={l.href}>
@@ -47,7 +50,7 @@ export function AppFooter() {
             </ul>
           </div>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/35">Support</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/35">{t("support")}</p>
             <ul className="mt-3 space-y-2">
               {supportLinks.map((l) => (
                 <li key={l.href}>
@@ -59,7 +62,7 @@ export function AppFooter() {
             </ul>
           </div>
           <div className="col-span-2 sm:col-span-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/35">Legal</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/35">{t("legal")}</p>
             <ul className="mt-3 space-y-2">
               {legalLinks.map((l) => (
                 <li key={l.href}>
@@ -73,7 +76,7 @@ export function AppFooter() {
         </nav>
         <div className="flex flex-col items-center gap-2 border-t border-white/[0.06] pt-6">
           <p className="text-center text-[11px] font-extralight uppercase tracking-[0.28em] text-white/30">Salvya</p>
-          <p className="text-center text-[12px] text-white/35">© {new Date().getFullYear()} Salvya — Official artist merch</p>
+          <p className="text-center text-[12px] text-white/35">{t("copyright", { year: new Date().getFullYear() })}</p>
         </div>
       </div>
     </motion.footer>

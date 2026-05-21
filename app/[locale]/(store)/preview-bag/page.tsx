@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { useBag } from "@/components/cart/BagProvider";
 import { IconCreditCard } from "@/components/shop/product-dock-icons";
 import { productPageHrefForLine } from "@/lib/cart/line-id";
@@ -80,6 +81,9 @@ const listItemAnimated = {
 };
 
 export default function PreviewBagPage() {
+  const t = useTranslations("bag");
+  const tCommon = useTranslations("common");
+  const tProduct = useTranslations("product");
   const router = useRouter();
   const reduceMotion = useReducedMotion();
   const { lines, totalQty, isSignedIn, synced, removeLine, updateLineQty, clearBag } = useBag();
@@ -97,17 +101,13 @@ export default function PreviewBagPage() {
   const total = totalQty;
   const lineCount = lines.length;
 
-  const bagBadge = isSignedIn
-    ? synced
-      ? "Your bag · synced"
-      : "Your bag"
-    : "Your bag";
+  const bagBadge = isSignedIn && synced ? t("badgeSynced") : t("badge");
 
   const bagIntro = isSignedIn
     ? synced
-      ? "Lines you added from product pages — saved to your Salvya account and this device. Open checkout when you are ready; nothing is reserved until you finish a flow."
-      : "Lines you added from product pages — saved on this device. Sign in with cloud sync enabled to keep your bag across devices."
-    : "Lines you added from product pages. Sign in to save your bag to your Salvya account and use it on any device.";
+      ? t("introSynced")
+      : t("introSignedIn")
+    : t("introGuest");
 
   const parentVariants = reduceMotion ? listParentStatic : listParentAnimated;
   const itemVariants = reduceMotion ? listItemStatic : listItemAnimated;
@@ -130,7 +130,7 @@ export default function PreviewBagPage() {
             <span className="text-[15px] leading-none opacity-80" aria-hidden>
               ←
             </span>
-            Home
+            {tCommon("home")}
           </Link>
           <span className="rounded-full border border-[#2D6BFF]/25 bg-[#2D6BFF]/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#b8c9ff]">
             {bagBadge}
@@ -148,7 +148,7 @@ export default function PreviewBagPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
         >
-          <h1 className="text-[1.65rem] font-semibold leading-tight tracking-[-0.04em] sm:text-[1.85rem]">Your bag</h1>
+          <h1 className="text-[1.65rem] font-semibold leading-tight tracking-[-0.04em] sm:text-[1.85rem]">{t("title")}</h1>
           <p className="mt-2 max-w-md text-[14px] leading-relaxed text-white/48">{bagIntro}</p>
         </motion.div>
 
@@ -162,17 +162,18 @@ export default function PreviewBagPage() {
             <div className="mx-auto mb-5 w-[7.5rem] text-white/30">
               <BagIllustration className="h-full w-full" />
             </div>
-            <p className="text-[16px] font-semibold text-white/88">Nothing in your bag yet</p>
+            <p className="text-[16px] font-semibold text-white/88">{t("emptyTitle")}</p>
             <p className="mx-auto mt-2 max-w-[22rem] text-[13px] leading-relaxed text-white/42">
-              On any piece, pick size and color, tap <span className="font-medium text-white/65">Add this variant</span>,
-              then add another size or color before checkout.
+              {t.rich("emptyHint", {
+                addVariant: (chunks) => <span className="font-medium text-white/65">{chunks}</span>,
+              })}
             </p>
             <div className="mt-8 flex flex-col items-stretch gap-2.5 sm:flex-row sm:justify-center">
               <Link
                 href="/"
                 className="inline-flex min-h-[46px] items-center justify-center rounded-xl bg-[#2D6BFF] px-5 text-[14px] font-semibold text-white shadow-[0_12px_36px_-14px_rgba(45,107,255,0.55)] transition-[transform,box-shadow] hover:shadow-[0_16px_40px_-12px_rgba(45,107,255,0.6)] active:scale-[0.99]"
               >
-                Browse Salvya
+                {t("browseSalvya")}
               </Link>
               {featuredShop ? (
                 <Link
@@ -180,7 +181,7 @@ export default function PreviewBagPage() {
                   prefetch={false}
                   className="inline-flex min-h-[46px] items-center justify-center rounded-xl border border-white/[0.12] bg-white/[0.04] px-5 text-[14px] font-semibold text-white/80 transition-colors hover:border-white/[0.18] hover:bg-white/[0.07] hover:text-white"
                 >
-                  {featuredShop.name} shop
+                  {t("artistShop", { name: featuredShop.name })}
                 </Link>
               ) : null}
             </div>
@@ -189,9 +190,9 @@ export default function PreviewBagPage() {
           <>
             <div className="mt-8 flex flex-wrap items-end justify-between gap-3 border-b border-white/[0.06] pb-4">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-white/38">Summary</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-white/38">{t("summary")}</p>
                 <p className="mt-1 text-[15px] font-medium tabular-nums text-white/85">
-                  {lineCount} {lineCount === 1 ? "line" : "lines"} · {total} {total === 1 ? "piece" : "pieces"}
+                  {t("lineCount", { count: lineCount })} · {t("pieceCount", { count: total })}
                 </p>
               </div>
               {lineCount > 1 ? (
@@ -200,7 +201,7 @@ export default function PreviewBagPage() {
                   onClick={() => clearBag()}
                   className="text-[12px] font-semibold text-white/40 underline-offset-4 transition-colors hover:text-rose-300/90 hover:underline"
                 >
-                  Clear all
+                  {t("clearAll")}
                 </button>
               ) : null}
             </div>
@@ -234,7 +235,7 @@ export default function PreviewBagPage() {
                         </p>
                         <div className="mt-3 flex flex-wrap items-center gap-2">
                           <Chip>{line.colorLabel}</Chip>
-                          <Chip>{`Size ${line.size}`}</Chip>
+                          <Chip>{tProduct("sizeLabel", { size: line.size })}</Chip>
                           <div className="inline-flex items-center gap-1 rounded-lg border border-white/[0.1] bg-black/30 px-1">
                             <button
                               type="button"
@@ -253,7 +254,7 @@ export default function PreviewBagPage() {
                               onClick={() => updateLineQty(line.lineId, line.qty + 1)}
                               disabled={line.qty >= 5}
                               className="flex h-7 w-7 items-center justify-center rounded-md text-white/60 hover:bg-white/10 disabled:opacity-30"
-                              aria-label="Increase quantity"
+                              aria-label={t("increaseQty")}
                             >
                               +
                             </button>
@@ -261,7 +262,7 @@ export default function PreviewBagPage() {
                         </div>
                         {line.giftNote ? (
                           <div className="mt-3 rounded-xl border border-[#2D6BFF]/22 bg-gradient-to-br from-[#2D6BFF]/12 to-[#0a0a10] px-3 py-2.5">
-                            <p className="text-[10px] font-semibold uppercase tracking-wide text-[#9eb4ff]">Gift message</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-[#9eb4ff]">{t("giftMessage")}</p>
                             <p className="mt-1 line-clamp-3 text-[12px] leading-relaxed text-white/82">{line.giftNote}</p>
                           </div>
                         ) : null}
@@ -271,7 +272,7 @@ export default function PreviewBagPage() {
                         type="button"
                         onClick={() => removeLine(line.lineId)}
                         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-black/25 text-white/45 transition-colors hover:border-rose-400/30 hover:bg-rose-500/15 hover:text-rose-200/95"
-                        aria-label={`Remove ${line.displayTitle} from bag`}
+                        aria-label={t("removeFromBag", { title: line.displayTitle })}
                       >
                         <TrashIcon />
                       </button>
@@ -283,7 +284,7 @@ export default function PreviewBagPage() {
                         prefetch={false}
                         className="inline-flex min-h-[42px] w-full items-center justify-center rounded-xl border border-dashed border-[#2D6BFF]/35 bg-[#2D6BFF]/8 px-4 text-[13px] font-semibold text-[#c5d4ff] transition-colors hover:border-[#2D6BFF]/50 hover:bg-[#2D6BFF]/14"
                       >
-                        + Another size or color
+                        {t("anotherVariant")}
                       </Link>
                     </div>
                   </div>
@@ -292,16 +293,19 @@ export default function PreviewBagPage() {
             </motion.ul>
 
             <p className="mt-8 text-center text-[12px] leading-relaxed text-white/36" aria-live="polite">
-              {bagBadge} · {lineCount} {lineCount === 1 ? "variant" : "variants"} · {total}{" "}
-              {total === 1 ? "piece" : "pieces"}
-              {lineCount > 1 ? " · One checkout walks through each variant in order." : null}
+              {t("footerStatus", {
+                badge: bagBadge,
+                variants: lineCount,
+                pieces: total,
+              })}
+              {lineCount > 1 ? ` · ${t("multiCheckoutNote")}` : null}
             </p>
           </>
         )}
 
         <p className="mt-12 border-t border-white/[0.06] pt-8 text-center text-[12px] text-white/32">
           <Link href="/" className="font-medium text-[#8fa8e8] underline-offset-4 transition-colors hover:text-[#b8c9ff] hover:underline">
-            Salvya home
+            {t("salvyaHome")}
           </Link>
         </p>
       </main>
@@ -319,11 +323,9 @@ export default function PreviewBagPage() {
               className="flex min-h-[50px] w-full items-center justify-center gap-2 rounded-xl bg-[#2D6BFF] text-[15px] font-semibold text-white shadow-[0_10px_32px_-12px_rgba(45,107,255,0.55)] transition-[transform,box-shadow] active:scale-[0.99] hover:shadow-[0_14px_36px_-10px_rgba(45,107,255,0.62)]"
             >
               <IconCreditCard className="size-5 shrink-0" />
-              Checkout · {lineCount} {lineCount === 1 ? "variant" : "variants"}
+              {t("checkoutCta", { count: lineCount })}
             </button>
-            <p className="text-center text-[11px] leading-relaxed text-white/38">
-              Secure Salvya checkout for everything in your bag.
-            </p>
+            <p className="text-center text-[11px] leading-relaxed text-white/38">{t("checkoutSecureNote")}</p>
           </div>
         </motion.div>
       ) : null}

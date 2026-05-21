@@ -22,9 +22,11 @@ import {
   CUSTOMER_ABOUT_STORY_HREF,
   CUSTOMER_PROFILE_HREF,
   CUSTOMER_SETTINGS_HREF,
-  CUSTOMER_SHOPPING_LINKS,
-  MENU_DISCOVER_MEMBER,
 } from "@/lib/menu/menu-hub-links";
+import {
+  useLocalizedDiscoverMember,
+  useLocalizedShoppingLinks,
+} from "@/lib/i18n/use-localized-menu-links";
 
 export function CustomerMenuPage() {
   const router = useRouter();
@@ -39,6 +41,8 @@ export function CustomerMenuPage() {
     return "customer";
   }, [isCreator, session?.creatorStatus]);
 
+  const discoverLinks = useLocalizedDiscoverMember();
+  const shoppingLinks = useLocalizedShoppingLinks();
   const headline = useMemo(() => (user ? welcomeHeadline(user) : { line: "Welcome", name: "" }), [user]);
 
   const signOut = useCallback(async () => {
@@ -56,8 +60,8 @@ export function CustomerMenuPage() {
         profileHref={CUSTOMER_PROFILE_HREF}
         settingsHref={CUSTOMER_SETTINGS_HREF}
       />
-      <MenuDiscoverGrid links={MENU_DISCOVER_MEMBER} delay={0.08} />
-      <MenuShoppingCard links={CUSTOMER_SHOPPING_LINKS} />
+      <MenuDiscoverGrid links={discoverLinks} delay={0.08} />
+      <MenuShoppingCard links={shoppingLinks} />
       <MenuPoliciesHub />
       <MenuAboutCard href={CUSTOMER_ABOUT_STORY_HREF} />
       <MenuCreatorProgrammeCard mode={creatorMenuMode} />
